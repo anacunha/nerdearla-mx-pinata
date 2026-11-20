@@ -1,32 +1,22 @@
-// ===== HNR LABS: THE MOSH PIT PIÑATA =====
-// Rewards are playful, symbolic game items (not redeemable tickets).
-const dulces = ['🎟️', '🎫', '🎸', '🤘', '🥭', '🍊', '🍍', '🍉', '🍬', '🍭', '🍫', '🥜', '🍯', '🥥'];
-const picos = 7;
-const resistencia = 20;
+// ===== HNR LABS — JAILBREAK THE PIÑATA =====
+// Icosaedro interactivo: 20 caras triangulares
+
+// Premios dentro del icosaedro
+const dulces = [
+  '🎟️', '🎫', '🎸', '🤘',
+  '🥭', '🍊', '🍍', '🍉',
+  '🍬', '🍭', '🍫', '🥜',
+  '🍪', '🍡', '🍬', '🍭',
+  '🎟️', '🎸', '🥭', '🍊'
+];
+
+// Configuración
+const resistenciaInicial = 20;
 const travesura = 3;
+const ESCALA = 72;
+const RADIO = 155;
 
-const letra = [
-  '[HNR] CHAOS PROTOCOL ACTIVATED',
-  '[HNR] TARGET ACQUIRED',
-  '[HNR] IMPACT DETECTED',
-  '[HNR] STRUCTURAL INTEGRITY: CRITICAL',
-  '[HNR] KEEP THE MOSH PIT MOVING',
-];
-const golpesFuertes = ['¡PUM!', '¡PAF!', '¡ZAS!', '¡MOSH!', '¡CRASH!'];
-const niveles = [
-  { mecer: 0, subir: 0, rapidez: 1 },
-  { mecer: 16, subir: 30, rapidez: 1.2 },
-  { mecer: 26, subir: 80, rapidez: 1.5 },
-  { mecer: 36, subir: 140, rapidez: 2.1 },
-];
-
-const limitar = (n, min, max) => Math.min(max, Math.max(min, Math.round(Number(n) || 0)));
-const golpesNecesarios = limitar(resistencia, 1, 999);
-const numeroDePicos = limitar(picos, 3, 12);
-const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const movimiento = sinMovimiento ? niveles[0] : niveles[limitar(travesura, 0, 3)];
-const contenido = dulces.length > 0 ? dulces : ['🍬'];
-
+// Elementos del DOM
 const patio = document.querySelector('#patio');
 const colgante = document.querySelector('#colgante');
 const cuerda = document.querySelector('#cuerda');
@@ -36,353 +26,730 @@ const verso = document.querySelector('#verso');
 const marcador = document.querySelector('#marcador');
 const final = document.querySelector('#final');
 const resumen = document.querySelector('#resumen');
-const botonOtra = document.querySelector('#otra');
-const botonGolpe = document.querySelector('#hit-action');
+const otra = document.querySelector('#otra');
 const capa = document.querySelector('#capa');
 const palo = document.querySelector('#palo');
 const bolsa = document.querySelector('#bolsa');
 const contadorBolsa = document.querySelector('#contador-bolsa');
-const integridadFill = document.querySelector('#integrity-fill');
-const integridadValor = document.querySelector('#integrity-value');
-const integridadTrack = document.querySelector('#integrity-track');
-const terminal = document.querySelector('#terminal-message');
 
-document.title = 'HNR LABS // THE MOSH PIT PIÑATA';
-patio.style.setProperty('--subir', `${movimiento.subir}px`);
-
+// Estado del juego
+let resistencia = resistenciaInicial;
 let golpes = 0;
-let intentos = 0;
-let rota = false;
-let juntados = 0;
-let linea = 0;
-let conos = [];
-let grietas = [];
-let piezas = [];
-let ultimoEstado = '';
+let dulcesRecogidos = 0;
+let juegoTerminado = false;
+let golpeando = false;
+let moviendo = false;
+let posicionPalo = { x: 0, y: 0 };
+let angulo = 0;
+let direccion = 1;
+let animacionPalo = null;
+let animacionPinata = null;
+let carasIcosaedro = [];
 
-// ----- Piñata SVG -----
-const SVG = 'http://www.w3.org/2000/svg';
-const RADIO = 62;
-const LARGO = 112;
-const azar = (min, max) => min + Math.random() * (max - min);
-const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
-const entre = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
-const xy = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+// Versos del juego
+const versos = [
+  '¡Dale con ganas!',
+  '¡Que caigan los dulces!',
+  '¡Más fuerte!',
+  '¡La piñata no se rinde!',
+  '¡Ya casi, ya casi!',
+  '¡Un golpe más!',
+  '¡Que viva la fiesta!'
+];
 
-function crear(etiqueta, atributos, padre) {
-  const elemento = document.createElementNS(SVG, etiqueta);
-  for (const [nombre, valor] of Object.entries(atributos)) elemento.setAttribute(nombre, valor);
-  padre.append(elemento);
-  return elemento;
-}
+// ===== CREAR VÉRTICES DEL ICOSAEDRO =====
 
-function dibujarPinata() {
-  dibujo.replaceChildren();
-  conos = [];
-  const paso = (2 * Math.PI) / numeroDePicos;
-  const mitad = Math.min(paso * 0.42, 0.55);
+function crearVerticesIcosaedro() {
+  const phi = (1 + Math.sqrt(5)) / 2;
 
-  for (let i = 0; i < numeroDePicos; i++) {
-    const angulo = -Math.PI / 2 + paso / 2 + i * paso;
-    const base1 = polar(RADIO * 0.85, angulo - mitad);
-    const base2 = polar(RADIO * 0.85, angulo + mitad);
-    const punta = polar(RADIO + LARGO, angulo);
-    const color = (i % 3) + 1;
-    const franja = ((i + 1) % 3) + 1;
-    const grupo = crear('g', {}, dibujo);
+  const vertices = [
+    [-1,  phi,  0],
+    [ 1,  phi,  0],
+    [-1, -phi,  0],
+    [ 1, -phi,  0],
 
-    for (let k = -2; k <= 2; k++) {
-      const fin = polar(RADIO + LARGO + 22, angulo + k * 0.06);
-      crear('path', { d: `M${xy(punta)} L${xy(fin)}`, class: `borla trazo-${((i + k + 3) % 3) + 1}` }, grupo);
-    }
-    crear('path', { d: `M${xy(base1)} L${xy(punta)} L${xy(base2)} Z`, class: `relleno-${color} contorno` }, grupo);
-    for (const [desde, hasta] of [[0.3, 0.42], [0.6, 0.69]]) {
-      const puntos = [entre(base1, punta, desde), entre(base1, punta, hasta), entre(base2, punta, hasta), entre(base2, punta, desde)];
-      crear('path', { d: `M${puntos.map(xy).join(' L')} Z`, class: `relleno-${franja}` }, grupo);
-    }
-    conos.push({ grupo, angulo, centro: polar(RADIO + LARGO * 0.45, angulo) });
-  }
+    [ 0, -1,  phi],
+    [ 0,  1,  phi],
+    [ 0, -1, -phi],
+    [ 0,  1, -phi],
 
-  const cuerpo = crear('g', {}, dibujo);
-  crear('circle', { r: RADIO, class: 'relleno-cuerpo contorno' }, cuerpo);
-  [RADIO - 10, RADIO - 32].forEach((r, i) => crear('circle', { r, class: `fleco trazo-${(i % 3) + 1}` }, cuerpo));
-  const capaGrietas = crear('g', {}, dibujo);
-  grietas = [];
-  for (let i = 0; i < 6; i++) {
-    const angulo = (i / 6) * 2 * Math.PI + azar(-0.3, 0.3);
-    let r = azar(4, 18);
-    let d = `M${xy(polar(r, angulo))}`;
-    while (r < RADIO + 45) {
-      r += azar(14, 24);
-      d += ` L${xy(polar(r, angulo + azar(-0.35, 0.35)))}`;
-    }
-    grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
-  }
-  grietas.sort(() => Math.random() - 0.5);
-}
+    [ phi,  0, -1],
+    [ phi,  0,  1],
+    [-phi,  0, -1],
+    [-phi,  0,  1]
+  ];
 
-function cantar() {
-  verso.textContent = letra[linea % letra.length];
-  terminal.textContent = verso.textContent;
-  linea++;
-  reiniciarAnimacion(verso, 'nuevo');
-}
+  return vertices.map(([x, y, z]) => {
+    const factor = ESCALA;
 
-function reiniciarAnimacion(elemento, clase) {
-  elemento.classList.remove(clase);
-  void elemento.offsetWidth;
-  elemento.classList.add(clase);
-}
+    let px = x * factor;
+    let py = y * factor;
+    let pz = z * factor;
 
-function actualizarHUD() {
-  const porcentaje = Math.max(0, Math.round((1 - golpes / golpesNecesarios) * 100));
-  marcador.innerHTML = `${String(golpes).padStart(2, '0')} <span>/ ${golpesNecesarios}</span>`;
-  integridadFill.style.transform = `scaleX(${porcentaje / 100})`;
-  integridadValor.textContent = `${porcentaje}%`;
-  integridadTrack.setAttribute('aria-valuenow', String(porcentaje));
-  if (porcentaje <= 25 && ultimoEstado !== 'critical') {
-    terminal.textContent = '[HNR] STRUCTURAL INTEGRITY: CRITICAL';
-    ultimoEstado = 'critical';
-  }
-}
+    // Rotación sobre el eje X
+    const rotX = 0.35;
 
-function batear(x, y) {
-  const lado = x < innerWidth / 2 ? 'izquierda' : 'derecha';
-  palo.className = `palo ${lado}`;
-  palo.style.left = `${x}px`;
-  palo.style.top = `${y}px`;
-  reiniciarAnimacion(palo, 'activo');
-}
+    const y1 = py * Math.cos(rotX) - pz * Math.sin(rotX);
+    const z1 = py * Math.sin(rotX) + pz * Math.cos(rotX);
 
-function mostrarTexto(x, y, texto, clase = '') {
-  const pum = document.createElement('p');
-  pum.className = `pum ${clase}`;
-  pum.textContent = texto;
-  pum.style.left = `${x}px`;
-  pum.style.top = `${y}px`;
-  pum.addEventListener('animationend', () => pum.remove());
-  document.body.append(pum);
-}
+    py = y1;
+    pz = z1;
 
-function pegar(x, y) {
-  if (rota) return;
-  golpes++;
-  intentos++;
-  cantar();
-  batear(x, y);
-  mostrarTexto(x, y, golpesFuertes[Math.floor(Math.random() * golpesFuertes.length)]);
-  reiniciarAnimacion(dibujo, 'golpe');
-  reiniciarAnimacion(patio, 'hit-flash');
-  const caja = pinata.getBoundingClientRect();
-  const direccion = x < caja.left + caja.width / 2 ? -1 : 1;
-  pendulo.velocidad += direccion * azar(70, 120);
-  const visibles = Math.floor((golpes / golpesNecesarios) * (grietas.length + 1));
-  grietas.forEach((grieta, i) => grieta.classList.toggle('visible', i < visibles));
-  actualizarHUD();
-  if (golpes >= golpesNecesarios) romper();
-}
+    // Rotación sobre el eje Y
+    const rotY = 0.45;
 
-function fallar(x, y) {
-  if (rota) return;
-  intentos++;
-  cantar();
-  batear(x, y);
-  mostrarTexto(x, y, '¡AIRE!', 'aire');
-}
+    const x2 = px * Math.cos(rotY) + pz * Math.sin(rotY);
+    const z2 = -px * Math.sin(rotY) + pz * Math.cos(rotY);
 
-pinata.addEventListener('pointerdown', (evento) => {
-  evento.stopPropagation();
-  pegar(evento.clientX, evento.clientY);
-});
-pinata.addEventListener('click', (evento) => {
-  if (evento.detail !== 0) return;
-  const caja = pinata.getBoundingClientRect();
-  pegar(caja.left + caja.width * azar(0.3, 0.7), caja.top + caja.height * 0.5);
-});
-patio.addEventListener('pointerdown', (evento) => {
-  if (evento.target.closest('.final') || evento.target.closest('#hit-action')) return;
-  fallar(evento.clientX, evento.clientY);
-});
-botonGolpe.addEventListener('click', () => {
-  if (rota) return;
-  const caja = pinata.getBoundingClientRect();
-  pegar(caja.left + caja.width * 0.5, caja.top + caja.height * 0.5);
-});
+    px = x2;
+    pz = z2;
 
-// ----- Ruptura, confeti y recompensas -----
-function agregarPieza(pieza) {
-  capa.append(pieza.el);
-  piezas.push({ giro: 0, vgiro: 0, gravedad: 1400, ...pieza });
-}
-
-function romper() {
-  if (rota) return;
-  rota = true;
-  botonGolpe.disabled = true;
-  terminal.textContent = '[HNR] REWARDS RELEASED';
-  patio.classList.add('screen-glitch');
-  setTimeout(() => patio.classList.remove('screen-glitch'), 420);
-  const origen = capa.getBoundingClientRect();
-  const caja = dibujo.getBoundingClientRect();
-  const tam = dibujo.offsetWidth;
-  const centroX = caja.left + caja.width / 2 - origen.left;
-  const centroY = caja.top + caja.height / 2 - origen.top;
-  const escala = tam / 400;
-
-  if (!sinMovimiento) {
-    for (const cono of conos) {
-      const svg = document.createElementNS(SVG, 'svg');
-      svg.setAttribute('viewBox', '-200 -200 400 400');
-      svg.setAttribute('class', 'fragmento');
-      svg.style.width = svg.style.height = `${tam}px`;
-      svg.style.transformOrigin = `${(cono.centro[0] + 200) * escala}px ${(cono.centro[1] + 200) * escala}px`;
-      svg.append(cono.grupo.cloneNode(true));
-      const fuerza = azar(220, 420);
-      agregarPieza({ el: svg, tipo: 'fragmento', x: centroX - tam / 2, y: centroY - tam / 2, vx: Math.cos(cono.angulo) * fuerza, vy: Math.sin(cono.angulo) * fuerza - 250, vgiro: azar(-300, 300), vida: 1.6 });
-    }
-    for (let i = 0; i < 45; i++) {
-      const confeti = document.createElement('span');
-      confeti.className = 'confeti';
-      confeti.style.background = `var(${['--color-1', '--color-2', '--color-3', '--cuerpo'][i % 4]})`;
-      agregarPieza({ el: confeti, tipo: 'confeti', x: centroX + azar(-30, 30), y: centroY + azar(-30, 30), vx: azar(-380, 380), vy: azar(-650, -150), vgiro: azar(-720, 720), gravedad: 700, fase: azar(0, 6), vida: azar(2.5, 4) });
-    }
-  }
-
-  for (let i = 0; i < 28; i++) {
-    const dulce = document.createElement('span');
-    dulce.className = 'dulce';
-    dulce.textContent = contenido[i % contenido.length];
-    const pieza = { el: dulce, tipo: 'dulce', x: centroX + azar(-20, 20), y: centroY + azar(-20, 20), vx: azar(-280, 280), vy: azar(-560, -120), vgiro: azar(-400, 400), suelo: capa.clientHeight - azar(18, 46) };
-    dulce.addEventListener('pointerdown', () => juntar(pieza));
-    agregarPieza(pieza);
-  }
-
-  pinata.hidden = true;
-  verso.textContent = '';
-  bolsa.hidden = false;
-  setTimeout(() => {
-    resumen.textContent = `CHAOS CLEARED // ${golpes} hits, ${intentos} attempts. Collect your symbolic rewards.`;
-    final.hidden = false;
-    botonOtra.focus({ preventScroll: true });
-  }, 700);
-}
-
-function juntar(pieza) {
-  if (pieza.juntado) return;
-  pieza.juntado = true;
-  const origen = capa.getBoundingClientRect();
-  const destino = bolsa.getBoundingClientRect();
-  const x = destino.left + destino.width / 2 - origen.left;
-  const y = destino.top + destino.height / 2 - origen.top;
-  pieza.el.style.transition = 'transform .45s cubic-bezier(.5,-.4,.7,1), opacity .45s ease';
-  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(.4)`;
-  pieza.el.style.opacity = '0';
-  setTimeout(() => {
-    pieza.el.remove();
-    piezas = piezas.filter((otra) => otra !== pieza);
-    juntados++;
-    contadorBolsa.textContent = String(juntados);
-    reiniciarAnimacion(bolsa, 'lleno');
-  }, 450);
-}
-
-botonOtra.addEventListener('click', () => {
-  piezas.forEach((pieza) => pieza.el.remove());
-  piezas = [];
-  golpes = 0;
-  intentos = 0;
-  juntados = 0;
-  linea = 0;
-  rota = false;
-  ultimoEstado = '';
-  pendulo.angulo = 0;
-  pendulo.velocidad = 0;
-  dibujarPinata();
-  pinata.hidden = false;
-  botonGolpe.disabled = false;
-  marcador.hidden = false;
-  actualizarHUD();
-  verso.textContent = '[HNR] CHAOS PROTOCOL ACTIVATED';
-  terminal.textContent = verso.textContent;
-  bolsa.hidden = true;
-  contadorBolsa.textContent = '0';
-  final.hidden = true;
-  botonGolpe.focus({ preventScroll: true });
-});
-
-// ----- Movimiento pendular original (CHAOS 3/3) -----
-const pendulo = { angulo: 0, velocidad: 0 };
-let tiempo = 0;
-let anterior = performance.now();
-let largoCuerda = cuerda.offsetHeight;
-let jalon = 0;
-let siguienteJalon = azar(2, 4);
-addEventListener('resize', () => { largoCuerda = cuerda.offsetHeight; });
-
-function moverPiezas(dt) {
-  for (const p of piezas) {
-    if (p.juntado || p.quieto) continue;
-    p.vy += p.gravedad * dt;
-    if (p.tipo === 'confeti') {
-      p.vx *= 1 - 1.8 * dt;
-      p.vy = Math.min(p.vy, 130);
-      p.x += Math.sin(tiempo * 6 + p.fase) * 40 * dt;
-    }
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.giro += p.vgiro * dt;
-    if (p.tipo === 'dulce') {
-      if (p.y > p.suelo) {
-        p.y = p.suelo;
-        p.vy = Math.abs(p.vy) < 90 ? 0 : p.vy * -0.35;
-        p.vx *= 0.6;
-        p.vgiro *= 0.5;
-        if (p.vy === 0 && Math.abs(p.vx) < 2) p.quieto = true;
-      }
-      const pared = capa.clientWidth - 20;
-      if (p.x < 20 || p.x > pared) {
-        p.x = Math.min(pared, Math.max(20, p.x));
-        p.vx *= -0.5;
-      }
-      p.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
-    } else {
-      p.vida -= dt;
-      p.el.style.opacity = Math.min(1, Math.max(0, p.vida));
-      const centrar = p.tipo === 'confeti' ? ' translate(-50%, -50%)' : '';
-      p.el.style.transform = `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
-    }
-  }
-  piezas = piezas.filter((p) => {
-    if (p.vida !== undefined && p.vida <= 0) { p.el.remove(); return false; }
-    return true;
+    return {
+      x: px,
+      y: py,
+      z: z2
+    };
   });
 }
 
-function animar(ahora) {
-  const dt = Math.min(.05, (ahora - anterior) / 1000);
-  anterior = ahora;
-  tiempo += dt * movimiento.rapidez;
-  const objetivo = movimiento.mecer * (.65 * Math.sin(tiempo * 1.3) + .35 * Math.sin(tiempo * 2.9 + 1));
-  pendulo.velocidad += (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
-  pendulo.angulo += pendulo.velocidad * dt;
-  if (movimiento.subir > 0) {
-    siguienteJalon -= dt;
-    if (siguienteJalon <= 0) {
-      jalon = 1;
-      siguienteJalon = azar(1.5, 4) / movimiento.rapidez;
-      pendulo.velocidad += azar(-3, 3) * movimiento.mecer;
-    }
-    jalon = Math.max(0, jalon - dt * 1.8);
-  }
-  const subida = 1 - Math.sin(jalon * Math.PI);
-  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (.6 + .4 * Math.sin(tiempo * .5)) * subida;
-  colgante.style.transform = `rotate(${pendulo.angulo}deg)`;
-  cuerda.style.transform = `scaleY(${(largoCuerda + bajada) / largoCuerda})`;
-  pinata.style.transform = `translateY(${bajada}px)`;
-  moverPiezas(dt);
-  requestAnimationFrame(animar);
+// ===== DISTANCIA ENTRE VÉRTICES =====
+
+function distancia(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+
+  return dx * dx + dy * dy + dz * dz;
 }
 
-dibujarPinata();
-actualizarHUD();
-requestAnimationFrame(animar);
+// ===== DETECTAR LAS 20 CARAS =====
+
+function crearCaras(vertices) {
+  const caras = [];
+
+  // Las aristas originales miden 2 unidades.
+  // Después de escalar por ESCALA, su distancia al cuadrado
+  // es 4 * ESCALA * ESCALA.
+  const distanciaArista = 4 * ESCALA * ESCALA;
+
+  for (let i = 0; i < vertices.length; i++) {
+    for (let j = i + 1; j < vertices.length; j++) {
+      for (let k = j + 1; k < vertices.length; k++) {
+        const a = vertices[i];
+        const b = vertices[j];
+        const c = vertices[k];
+
+        const ab = distancia(a, b);
+        const ac = distancia(a, c);
+        const bc = distancia(b, c);
+
+        if (
+          Math.abs(ab - distanciaArista) < 0.01 &&
+          Math.abs(ac - distanciaArista) < 0.01 &&
+          Math.abs(bc - distanciaArista) < 0.01
+        ) {
+          const centro = {
+            x: (a.x + b.x + c.x) / 3,
+            y: (a.y + b.y + c.y) / 3,
+            z: (a.z + b.z + c.z) / 3
+          };
+
+          caras.push({
+            vertices: [a, b, c],
+            centro,
+            grupo: null
+          });
+        }
+      }
+    }
+  }
+
+  // Dibujar primero las caras más alejadas
+  caras.sort((a, b) => a.centro.z - b.centro.z);
+
+  return caras;
+}
+
+// ===== DIBUJAR EL ICOSAEDRO =====
+
+function dibujarIcosaedro() {
+  const vertices = crearVerticesIcosaedro();
+  const caras = crearCaras(vertices);
+
+  dibujo.innerHTML = '';
+
+  const colores = [
+    'relleno-1',
+    'relleno-2',
+    'relleno-3'
+  ];
+
+  caras.forEach((cara, index) => {
+    const grupo = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'g'
+    );
+
+    grupo.setAttribute('class', 'cara-icosaedro');
+
+    const poligono = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'polygon'
+    );
+
+    const puntos = cara.vertices
+      .map(v => `${v.x},${v.y}`)
+      .join(' ');
+
+    poligono.setAttribute('points', puntos);
+    poligono.setAttribute(
+      'class',
+      colores[index % colores.length]
+    );
+
+    grupo.appendChild(poligono);
+
+    const centro = cara.centro;
+
+    const detalle = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'circle'
+    );
+
+    detalle.setAttribute('cx', centro.x);
+    detalle.setAttribute('cy', centro.y);
+    detalle.setAttribute('r', '3');
+    detalle.setAttribute('fill', '#C7B182');
+    detalle.setAttribute('opacity', '0.65');
+
+    grupo.appendChild(detalle);
+
+    dibujo.appendChild(grupo);
+
+    cara.grupo = grupo;
+  });
+
+  carasIcosaedro = caras;
+
+  if (caras.length !== 20) {
+    console.error(
+      `Error: se esperaban 20 caras y se generaron ${caras.length}.`
+    );
+  }
+}
+
+// ===== MOVIMIENTO DEL PÉNDULO =====
+
+function moverPinata() {
+  if (juegoTerminado || !colgante) return;
+
+  angulo += 0.025 * direccion;
+
+  if (angulo > 0.25 || angulo < -0.25) {
+    direccion *= -1;
+  }
+
+  colgante.style.transform = `rotate(${angulo}rad)`;
+
+  animacionPinata = requestAnimationFrame(moverPinata);
+}
+
+// ===== GOLPEAR LA PIÑATA =====
+
+function golpear() {
+  if (juegoTerminado || golpeando || resistencia <= 0) {
+    return;
+  }
+
+  golpeando = true;
+  golpes++;
+
+  resistencia--;
+
+  if (marcador) {
+    marcador.textContent = resistencia;
+  }
+
+  if (verso) {
+    verso.textContent =
+      versos[Math.floor(Math.random() * versos.length)];
+  }
+
+  if (palo) {
+    palo.classList.add('golpe');
+  }
+
+  if (pinata) {
+    pinata.classList.add('impacto');
+  }
+
+  if (resistencia <= 0) {
+    setTimeout(() => {
+      romper();
+    }, 250);
+  } else {
+    crearGrieta();
+  }
+
+  setTimeout(() => {
+    golpeando = false;
+
+    if (palo) {
+      palo.classList.remove('golpe');
+    }
+
+    if (pinata) {
+      pinata.classList.remove('impacto');
+    }
+  }, 300);
+}
+
+// ===== CREAR GRIETAS =====
+
+function crearGrieta() {
+  const grieta = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'path'
+  );
+
+  const x = (Math.random() - 0.5) * RADIO;
+  const y = (Math.random() - 0.5) * RADIO;
+
+  const x2 = x + (Math.random() - 0.5) * 55;
+  const y2 = y + (Math.random() - 0.5) * 55;
+
+  const x3 = x2 + (Math.random() - 0.5) * 40;
+  const y3 = y2 + (Math.random() - 0.5) * 40;
+
+  grieta.setAttribute(
+    'd',
+    `M ${x} ${y} L ${x2} ${y2} L ${x3} ${y3}`
+  );
+
+  grieta.setAttribute('class', 'grieta');
+
+  dibujo.appendChild(grieta);
+}
+
+// ===== ROMPER LA PIÑATA =====
+
+function romper() {
+  if (juegoTerminado) return;
+
+  juegoTerminado = true;
+
+  cancelAnimationFrame(animacionPinata);
+
+  if (verso) {
+    verso.textContent = '¡LA PIÑATA SE ROMPIÓ!';
+  }
+
+  if (pinata) {
+    pinata.style.opacity = '0';
+  }
+
+  crearFragmentos();
+  lanzarConfeti();
+  lanzarDulces();
+
+  setTimeout(() => {
+    if (final) {
+      final.classList.add('visible');
+    }
+
+    if (resumen) {
+      resumen.textContent =
+        `¡La rompiste en ${golpes} golpes! Recoge los dulces.`;
+    }
+  }, 800);
+}
+
+// ===== FRAGMENTOS DEL ICOSAEDRO =====
+
+function crearFragmentos() {
+  const tam = dibujo.offsetWidth || 400;
+
+  carasIcosaedro.forEach((cara, index) => {
+    if (!cara.grupo) return;
+
+    const fragmento = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg'
+    );
+
+    fragmento.setAttribute(
+      'viewBox',
+      '-200 -200 400 400'
+    );
+
+    fragmento.setAttribute('width', tam);
+    fragmento.setAttribute('height', tam);
+    fragmento.setAttribute('class', 'fragmento');
+
+    const copia = cara.grupo.cloneNode(true);
+
+    fragmento.appendChild(copia);
+
+    if (capa) {
+      capa.appendChild(fragmento);
+    }
+
+    const centroX = cara.centro.x + 200;
+    const centroY = cara.centro.y + 200;
+
+    fragmento.style.position = 'absolute';
+    fragmento.style.left = '50%';
+    fragmento.style.top = '50%';
+    fragmento.style.width = `${tam}px`;
+    fragmento.style.height = `${tam}px`;
+    fragmento.style.overflow = 'visible';
+    fragmento.style.pointerEvents = 'none';
+
+    fragmento.style.transformOrigin =
+      `${centroX / 400 * 100}% ${centroY / 400 * 100}%`;
+
+    const anguloFragmento =
+      (Math.random() - 0.5) * 100;
+
+    const distanciaFragmento =
+      120 + Math.random() * 180;
+
+    const destinoX =
+      Math.cos(index * 2.4) * distanciaFragmento;
+
+    const destinoY =
+      Math.sin(index * 2.4) * distanciaFragmento;
+
+    fragmento.animate(
+      [
+        {
+          transform: 'translate(0, 0) rotate(0deg)',
+          opacity: 1
+        },
+        {
+          transform:
+            `translate(${destinoX}px, ${destinoY}px) rotate(${anguloFragmento}deg)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 900 + Math.random() * 500,
+        easing: 'cubic-bezier(.2,.7,.3,1)',
+        fill: 'forwards'
+      }
+    );
+  });
+}
+
+// ===== CONFETI =====
+
+function lanzarConfeti() {
+  if (!capa) return;
+
+  const colores = [
+    '#C7B182',
+    '#634F5F',
+    '#E4007C',
+    '#FFC21A',
+    '#00A6A6',
+    '#FFFFFF'
+  ];
+
+  for (let i = 0; i < 70; i++) {
+    const pieza = document.createElement('div');
+
+    pieza.className = 'confeti';
+
+    pieza.style.position = 'absolute';
+    pieza.style.left = `${Math.random() * 100}%`;
+    pieza.style.top = `${Math.random() * 30}%`;
+    pieza.style.width = `${5 + Math.random() * 7}px`;
+    pieza.style.height = `${5 + Math.random() * 10}px`;
+    pieza.style.background =
+      colores[Math.floor(Math.random() * colores.length)];
+
+    capa.appendChild(pieza);
+
+    const destinoX =
+      (Math.random() - 0.5) * 500;
+
+    const destinoY =
+      250 + Math.random() * 300;
+
+    pieza.animate(
+      [
+        {
+          transform: 'translate(0, 0) rotate(0deg)',
+          opacity: 1
+        },
+        {
+          transform:
+            `translate(${destinoX}px, ${destinoY}px) rotate(${Math.random() * 720}deg)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 1800 + Math.random() * 1500,
+        easing: 'ease-out',
+        fill: 'forwards'
+      }
+    );
+  }
+}
+
+// ===== LANZAR DULCES =====
+
+function lanzarDulces() {
+  if (!capa) return;
+
+  const cantidad = 28;
+
+  for (let i = 0; i < cantidad; i++) {
+    const dulce = document.createElement('button');
+
+    dulce.type = 'button';
+    dulce.className = 'dulce';
+
+    dulce.textContent =
+      dulces[Math.floor(Math.random() * dulces.length)];
+
+    dulce.setAttribute('aria-label', 'Recoger dulce');
+
+    dulce.style.position = 'absolute';
+    dulce.style.left = '50%';
+    dulce.style.top = '50%';
+    dulce.style.border = '0';
+    dulce.style.background = 'transparent';
+    dulce.style.fontSize = `${22 + Math.random() * 12}px`;
+    dulce.style.cursor = 'pointer';
+    dulce.style.zIndex = '10';
+
+    const destinoX =
+      (Math.random() - 0.5) * 350;
+
+    const destinoY =
+      (Math.random() - 0.5) * 280;
+
+    dulce.animate(
+      [
+        {
+          transform: 'translate(-50%, -50%) scale(.3)',
+          opacity: 0
+        },
+        {
+          transform:
+            `translate(calc(-50% + ${destinoX}px), calc(-50% + ${destinoY}px)) scale(1)`,
+          opacity: 1
+        }
+      ],
+      {
+        duration: 700 + Math.random() * 500,
+        easing: 'cubic-bezier(.2,.7,.3,1)',
+        fill: 'forwards'
+      }
+    );
+
+    dulce.addEventListener('click', () => {
+      if (dulce.classList.contains('recogido')) return;
+
+      dulce.classList.add('recogido');
+      dulce.style.pointerEvents = 'none';
+
+      dulce.animate(
+        [
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: 'scale(0)', opacity: 0 }
+        ],
+        {
+          duration: 250,
+          fill: 'forwards'
+        }
+      );
+
+      dulcesRecogidos++;
+
+      if (contadorBolsa) {
+        contadorBolsa.textContent = dulcesRecogidos;
+      }
+
+      setTimeout(() => {
+        dulce.remove();
+      }, 260);
+    });
+
+    capa.appendChild(dulce);
+  }
+}
+
+// ===== CONTROL DEL PALO =====
+
+function iniciarMovimiento(event) {
+  if (juegoTerminado || moviendo) return;
+
+  moviendo = true;
+
+  const punto = obtenerPunto(event);
+
+  posicionPalo = punto;
+
+  if (palo) {
+    palo.style.left = `${punto.x}px`;
+    palo.style.top = `${punto.y}px`;
+  }
+}
+
+function moverPalo(event) {
+  if (!moviendo || juegoTerminado) return;
+
+  const punto = obtenerPunto(event);
+
+  posicionPalo = punto;
+
+  if (palo) {
+    palo.style.left = `${punto.x}px`;
+    palo.style.top = `${punto.y}px`;
+  }
+}
+
+function terminarMovimiento() {
+  if (!moviendo) return;
+
+  moviendo = false;
+
+  golpear();
+}
+
+function obtenerPunto(event) {
+  const rect = patio.getBoundingClientRect();
+
+  const touch =
+    event.touches && event.touches.length
+      ? event.touches[0]
+      : event.changedTouches && event.changedTouches.length
+        ? event.changedTouches[0]
+        : event;
+
+  return {
+    x: touch.clientX - rect.left,
+    y: touch.clientY - rect.top
+  };
+}
+
+// ===== EVENTOS DEL JUEGO =====
+
+if (patio) {
+  patio.addEventListener('pointerdown', event => {
+    if (
+      event.target.closest('button') ||
+      event.target.closest('#otra')
+    ) {
+      return;
+    }
+
+    iniciarMovimiento(event);
+  });
+
+  patio.addEventListener('pointermove', moverPalo);
+  patio.addEventListener('pointerup', terminarMovimiento);
+  patio.addEventListener('pointercancel', terminarMovimiento);
+}
+
+// Golpe con teclado
+document.addEventListener('keydown', event => {
+  if (
+    event.code === 'Space' ||
+    event.code === 'Enter'
+  ) {
+    if (
+      event.target.tagName === 'BUTTON' ||
+      event.target.tagName === 'INPUT'
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    golpear();
+  }
+});
+
+// ===== REINICIAR JUEGO =====
+
+function reiniciarJuego() {
+  resistencia = resistenciaInicial;
+  golpes = 0;
+  dulcesRecogidos = 0;
+  juegoTerminado = false;
+  golpeando = false;
+  moviendo = false;
+  angulo = 0;
+  direccion = 1;
+
+  cancelAnimationFrame(animacionPinata);
+  cancelAnimationFrame(animacionPalo);
+
+  if (marcador) {
+    marcador.textContent = resistencia;
+  }
+
+  if (contadorBolsa) {
+    contadorBolsa.textContent = '0';
+  }
+
+  if (final) {
+    final.classList.remove('visible');
+  }
+
+  if (capa) {
+    capa.innerHTML = '';
+  }
+
+  if (pinata) {
+    pinata.style.opacity = '1';
+    pinata.style.transform = '';
+    pinata.classList.remove('impacto');
+  }
+
+  if (colgante) {
+    colgante.style.transform = 'rotate(0rad)';
+  }
+
+  if (palo) {
+    palo.classList.remove('golpe');
+  }
+
+  if (verso) {
+    verso.textContent = '¡Dale con ganas!';
+  }
+
+  dibujarIcosaedro();
+  moverPinata();
+}
+
+if (otra) {
+  otra.addEventListener('click', reiniciarJuego);
+}
+
+// ===== INICIAR =====
+
+function iniciarJuego() {
+  if (!dibujo || !patio || !pinata) {
+    console.error(
+      'HNR Labs: faltan elementos necesarios en index.html.'
+    );
+    return;
+  }
+
+  dibujarIcosaedro();
+
+  if (marcador) {
+    marcador.textContent = resistencia;
+  }
+
+  if (contadorBolsa) {
+    contadorBolsa.textContent = '0';
+  }
+
+  moverPinata();
+}
+
+iniciarJuego();
