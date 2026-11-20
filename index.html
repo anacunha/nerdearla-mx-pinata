@@ -28,11 +28,16 @@
       <section class="hud" aria-label="Estado del juego">
         <div class="hud-card hits-card">
           <span class="hud-label">HITS</span>
-          <strong id="marcador" aria-live="polite">00 <span>/ 20</span></strong>
+          <strong id="marcador" aria-live="polite">0 <span>/ 20</span></strong>
         </div>
         <div class="hud-card integrity-card">
-          <div class="integrity-heading"><span class="hud-label">PIÑATA INTEGRITY</span><strong id="integrity-value">100%</strong></div>
-          <div class="integrity-track" role="progressbar" aria-label="Integridad de la piñata" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="integrity-track"><span id="integrity-fill"></span></div>
+          <div class="integrity-heading">
+            <span class="hud-label">PIÑATA INTEGRITY</span>
+            <strong id="integrity-value">100%</strong>
+          </div>
+          <div class="integrity-track" role="progressbar" aria-label="Integridad de la piñata" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="integrity-track">
+            <span id="integrity-fill"></span>
+          </div>
         </div>
         <div class="hud-card reward-card">
           <span class="hud-label">REWARD POOL</span>
@@ -42,16 +47,22 @@
 
       <section class="patio" id="patio" aria-label="Escenario de la piñata">
         <div class="scanlines" aria-hidden="true"></div>
-        <div class="stage-topline" aria-hidden="true"><span>HNR / CHAOS PROTOCOL</span><span class="target-state"><i></i> TARGET ACQUIRED</span></div>
+        <div class="stage-topline" aria-hidden="true">
+          <span>HNR / CHAOS PROTOCOL</span>
+          <span class="target-state"><i></i> TARGET ACQUIRED</span>
+        </div>
         <div class="stage-grid" aria-hidden="true"></div>
+
         <div class="colgante" id="colgante">
           <span class="cuerda" id="cuerda"></span>
           <button class="pinata" id="pinata" type="button" aria-label="Pegarle a la piñata">
             <svg class="dibujo" id="dibujo" viewBox="-200 -200 400 400" aria-hidden="true"></svg>
           </button>
         </div>
-        <p class="verso" id="verso">[HNR] CHAOS PROTOCOL ACTIVATED</p>
+
+        <p class="verso" id="verso" aria-live="polite">[HNR] CHAOS PROTOCOL ACTIVATED</p>
         <div class="capa" id="capa" aria-hidden="true"></div>
+
         <div class="final" id="final" hidden>
           <p class="final-kicker">[ MISSION COMPLETE ]</p>
           <p class="mensaje">LET THE TICKETS DROP!</p>
@@ -63,8 +74,12 @@
 
       <div class="controls">
         <p class="control-hint">TAP THE TARGET // MAKE IT LOUD</p>
-        <button class="hit-button" id="hit-action" type="button"><span class="button-cross">✳</span> HIT THE PIÑATA <span class="button-arrow">↗</span></button>
-        <p class="bolsa" id="bolsa" hidden>REWARDS SECURED <span class="bag-icon">▣</span> <strong id="contador-bolsa">0</strong></p>
+        <button class="hit-button" id="hit-action" type="button">
+          <span class="button-cross">✳</span> HIT THE PIÑATA <span class="button-arrow">↗</span>
+        </button>
+        <p class="bolsa" id="bolsa" hidden>
+          REWARDS SECURED <span class="bag-icon">▣</span> <strong id="contador-bolsa">0</strong>
+        </p>
       </div>
 
       <footer class="terminal-footer">
@@ -73,6 +88,7 @@
         <span class="footer-build">STATIC ARCADE // NO BACKEND</span>
       </footer>
     </main>
+
     <span class="palo" id="palo" aria-hidden="true"></span>
     <script src="script.js"></script>
   </body>
