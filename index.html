@@ -3,100 +3,77 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mi piñata</title>
-    <meta name="description" content="Una piñata para romper desde el navegador, publicada con AWS Amplify en Nerdearla México." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-32 -32 64 64'%3E%3Cpath d='M0-30L7-9 29-9 11 4 18 26 0 13-18 26-11 4-29-9-7-9Z' fill='%23E4007C' stroke='%23111' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle r='8' fill='%23FFC21A' stroke='%23111' stroke-width='3'/%3E%3C/svg%3E" />
+    <meta name="theme-color" content="#101010" />
+    <title>HNR LABS // THE MOSH PIT PIÑATA</title>
+    <meta name="description" content="HNR LABS presents THE MOSH PIT PIÑATA — Mexican Chaos Edition. Una piñata cyberpunk para romper desde el navegador." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Shrikhand&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="fiesta">
-      <!--
-        TODO 1: ¿Cómo se llama tu fiesta? Puede ser una posada, un cumpleaños o lo que quieras celebrar.
-        Ejemplo: <h1 class="titulo">La posada de la oficina</h1>
-      -->
-      <h1 class="titulo">Escribe el nombre de tu fiesta</h1>
+      <header class="brand">
+        <div class="brand-lockup">
+          <span class="brand-mark">HNR<span>//</span>LABS</span>
+          <span class="brand-presents">presents</span>
+        </div>
+        <div class="brand-title">
+          <h1 class="titulo">THE MOSH PIT PIÑATA</h1>
+          <p class="subtitle">MEXICAN CHAOS EDITION</p>
+        </div>
+        <div class="mode-tag"><span class="live-dot"></span> CHAOS MODE <small>3/3</small></div>
+      </header>
 
-      <div class="patio" id="patio">
-        <!-- Decoración: techo de papel de china y macetas. No necesitas cambiarla -->
-        <div class="techo" aria-hidden="true"></div>
+      <section class="hud" aria-label="Estado del juego">
+        <div class="hud-card hits-card">
+          <span class="hud-label">HITS</span>
+          <strong id="marcador" aria-live="polite">00 <span>/ 20</span></strong>
+        </div>
+        <div class="hud-card integrity-card">
+          <div class="integrity-heading"><span class="hud-label">PIÑATA INTEGRITY</span><strong id="integrity-value">100%</strong></div>
+          <div class="integrity-track" role="progressbar" aria-label="Integridad de la piñata" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="integrity-track"><span id="integrity-fill"></span></div>
+        </div>
+        <div class="hud-card reward-card">
+          <span class="hud-label">REWARD POOL</span>
+          <span class="reward-icons" aria-label="Boletos, música, frutas y dulces">🎟️ 🎸 🥭 🍊 🍬</span>
+        </div>
+      </section>
 
-        <svg class="maceta maceta-izquierda" viewBox="0 0 100 150" aria-hidden="true">
-          <g stroke="#2B1D14" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-            <path d="M40 92V32a10 10 0 0 1 20 0v60Z" fill="#3E9B4F" />
-            <path d="M40 70H30a8 8 0 0 1-8-8V48a7 7 0 0 1 14 0v8h4" fill="#3E9B4F" />
-            <path d="M60 62h8V40a7 7 0 0 1 14 0v14a8 8 0 0 1-8 8h-14" fill="#3E9B4F" />
-            <path d="M50 30v56M29 52v8M75 44v10" fill="none" stroke="#2C7A3B" stroke-width="2.5" />
-            <circle cx="50" cy="22" r="6" fill="#E4007C" />
-            <circle cx="50" cy="22" r="2" fill="#FFC21A" stroke="none" />
-            <path d="M14 92h72v12H14Z" fill="#D27A4E" />
-            <path d="M18 104h64l-8 42H26Z" fill="#C0673D" />
-          </g>
-          <path d="M24 118l6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6" fill="none" stroke="#FFF6E5" stroke-width="3" stroke-linejoin="round" />
-          <g fill="#1F4AA8"><circle cx="33" cy="130" r="3" /><circle cx="50" cy="130" r="3" /><circle cx="67" cy="130" r="3" /></g>
-        </svg>
-
-        <svg class="maceta maceta-derecha" viewBox="0 0 100 150" aria-hidden="true">
-          <g stroke="#2B1D14" stroke-width="3" stroke-linejoin="round">
-            <ellipse cx="50" cy="74" rx="16" ry="22" fill="#4FA35A" />
-            <ellipse cx="32" cy="44" rx="12" ry="17" transform="rotate(-25 32 44)" fill="#4FA35A" />
-            <ellipse cx="66" cy="38" rx="12" ry="17" transform="rotate(20 66 38)" fill="#4FA35A" />
-            <ellipse cx="24" cy="20" rx="5" ry="6" fill="#E4007C" />
-            <ellipse cx="38" cy="22" rx="5" ry="6" fill="#E4007C" />
-            <ellipse cx="74" cy="16" rx="5" ry="6" fill="#FF7A1A" />
-          </g>
-          <g fill="#2B1D14">
-            <circle cx="44" cy="66" r="1.5" /><circle cx="56" cy="74" r="1.5" /><circle cx="46" cy="84" r="1.5" />
-            <circle cx="30" cy="40" r="1.5" /><circle cx="36" cy="50" r="1.5" /><circle cx="64" cy="34" r="1.5" /><circle cx="70" cy="44" r="1.5" />
-          </g>
-          <g stroke="#2B1D14" stroke-width="3" stroke-linejoin="round">
-            <path d="M20 96h60l-6 50H26Z" fill="#FFFDF9" />
-            <path d="M16 92h68v10H16Z" fill="#1F4AA8" />
-          </g>
-          <g fill="#1F4AA8">
-            <path d="M50 108c5 6 5 10 0 14c-5-4-5-8 0-14Z" /><path d="M50 136c5-6 5-10 0-14c-5 4-5 8 0 14Z" />
-            <path d="M36 122c6-5 10-5 14 0c-4 5-8 5-14 0Z" /><path d="M64 122c-6-5-10-5-14 0c4 5 8 5 14 0Z" />
-            <circle cx="31" cy="110" r="2.5" /><circle cx="69" cy="110" r="2.5" /><circle cx="32" cy="136" r="2.5" /><circle cx="68" cy="136" r="2.5" />
-          </g>
-          <circle cx="50" cy="122" r="3" fill="#FFC21A" />
-        </svg>
-
+      <section class="patio" id="patio" aria-label="Escenario de la piñata">
+        <div class="scanlines" aria-hidden="true"></div>
+        <div class="stage-topline" aria-hidden="true"><span>HNR / CHAOS PROTOCOL</span><span class="target-state"><i></i> TARGET ACQUIRED</span></div>
+        <div class="stage-grid" aria-hidden="true"></div>
         <div class="colgante" id="colgante">
           <span class="cuerda" id="cuerda"></span>
           <button class="pinata" id="pinata" type="button" aria-label="Pegarle a la piñata">
             <svg class="dibujo" id="dibujo" viewBox="-200 -200 400 400" aria-hidden="true"></svg>
           </button>
         </div>
-
-        <p class="verso" id="verso">Toca la piñata para pegarle</p>
-
-        <!-- Aquí caen los dulces, el confeti y los pedazos de la piñata -->
+        <p class="verso" id="verso">[HNR] CHAOS PROTOCOL ACTIVATED</p>
         <div class="capa" id="capa" aria-hidden="true"></div>
-
         <div class="final" id="final" hidden>
-          <!--
-            TODO 2: ¿Qué se grita en tu fiesta cuando se rompe la piñata?
-            Ejemplo: <p class="mensaje">¡Ya salieron los cacahuates!</p>
-          -->
-          <p class="mensaje">¡Se rompió la piñata!</p>
-
+          <p class="final-kicker">[ MISSION COMPLETE ]</p>
+          <p class="mensaje">LET THE TICKETS DROP!</p>
+          <p class="final-noise">MAKE SOME NOISE!</p>
           <p class="resumen" id="resumen"></p>
-          <button class="boton" id="otra" type="button">Colgar otra piñata</button>
+          <button class="boton restart-button" id="otra" type="button">RESTART CHAOS</button>
         </div>
+      </section>
+
+      <div class="controls">
+        <p class="control-hint">TAP THE TARGET // MAKE IT LOUD</p>
+        <button class="hit-button" id="hit-action" type="button"><span class="button-cross">✳</span> HIT THE PIÑATA <span class="button-arrow">↗</span></button>
+        <p class="bolsa" id="bolsa" hidden>REWARDS SECURED <span class="bag-icon">▣</span> <strong id="contador-bolsa">0</strong></p>
       </div>
 
-      <p class="marcador" id="marcador" aria-live="polite">Golpes: 0</p>
-      <p class="bolsa" id="bolsa" hidden>🛍️ Juntaste <span id="contador-bolsa">0</span></p>
+      <footer class="terminal-footer">
+        <span class="terminal-prompt">HNR@MOSHPIT:~$</span>
+        <span id="terminal-message" aria-live="polite">[HNR] CHAOS PROTOCOL ACTIVATED</span>
+        <span class="footer-build">STATIC ARCADE // NO BACKEND</span>
+      </footer>
     </main>
-
-    <footer class="pie">
-      Publicada con AWS Amplify desde Nerdearla México
-    </footer>
-
     <span class="palo" id="palo" aria-hidden="true"></span>
-
     <script src="script.js"></script>
   </body>
 </html>

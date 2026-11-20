@@ -1,36 +1,18 @@
-// ===== Arma tu piñata =====
-
-// TODO 4: ¿Qué tiene tu piñata adentro?
-// Pon cada cosa entre comillas y sepáralas con comas. En el celular puedes usar el teclado de emojis.
-// Ejemplo: const dulces = ['🍬', '🍭', '🥜', '🍊', '🦖'];
-const dulces = ['🍬', '🍭', '🍫', '🥜', '🍊', '🍡'];
-
-// TODO 5: ¿Cuántos picos tiene tu piñata?
-// La piñata tradicional tiene 7. Prueba con un número del 3 al 12.
+// ===== HNR LABS: THE MOSH PIT PIÑATA =====
+// Rewards are playful, symbolic game items (not redeemable tickets).
+const dulces = ['🎟️', '🎫', '🎸', '🤘', '🥭', '🍊', '🍍', '🍉', '🍬', '🍭', '🍫', '🥜', '🍯', '🥥'];
 const picos = 7;
-
-// TODO 6: ¿Cuántos golpes aguanta antes de romperse?
-const resistencia = 8;
-
-// TODO 7: ¿Qué tan traviesa es la persona que jala la cuerda? Elige del 0 al 3.
-// 0 = no se mueve, 1 = se mece, 2 = la suben, la bajan y le dan jalones, 3 = no tiene piedad
-const travesura = 1;
-
-
-// ===== A partir de aquí no necesitas cambiar nada, pero puedes explorar =====
+const resistencia = 20;
+const travesura = 3;
 
 const letra = [
-  'Dale, dale, dale,',
-  'no pierdas el tino,',
-  'porque si lo pierdes,',
-  'pierdes el camino.',
-  'Ya le diste uno,',
-  'ya le diste dos,',
-  'ya le diste tres',
-  '¡y tu tiempo se acabó!',
+  '[HNR] CHAOS PROTOCOL ACTIVATED',
+  '[HNR] TARGET ACQUIRED',
+  '[HNR] IMPACT DETECTED',
+  '[HNR] STRUCTURAL INTEGRITY: CRITICAL',
+  '[HNR] KEEP THE MOSH PIT MOVING',
 ];
-const golpesFuertes = ['¡Pum!', '¡Paf!', '¡Zas!', '¡Toing!', '¡Cuas!'];
-
+const golpesFuertes = ['¡PUM!', '¡PAF!', '¡ZAS!', '¡MOSH!', '¡CRASH!'];
 const niveles = [
   { mecer: 0, subir: 0, rapidez: 1 },
   { mecer: 16, subir: 30, rapidez: 1.2 },
@@ -55,12 +37,17 @@ const marcador = document.querySelector('#marcador');
 const final = document.querySelector('#final');
 const resumen = document.querySelector('#resumen');
 const botonOtra = document.querySelector('#otra');
+const botonGolpe = document.querySelector('#hit-action');
 const capa = document.querySelector('#capa');
 const palo = document.querySelector('#palo');
 const bolsa = document.querySelector('#bolsa');
 const contadorBolsa = document.querySelector('#contador-bolsa');
+const integridadFill = document.querySelector('#integrity-fill');
+const integridadValor = document.querySelector('#integrity-value');
+const integridadTrack = document.querySelector('#integrity-track');
+const terminal = document.querySelector('#terminal-message');
 
-document.title = document.querySelector('.titulo').textContent.trim();
+document.title = 'HNR LABS // THE MOSH PIT PIÑATA';
 patio.style.setProperty('--subir', `${movimiento.subir}px`);
 
 let golpes = 0;
@@ -71,13 +58,12 @@ let linea = 0;
 let conos = [];
 let grietas = [];
 let piezas = [];
+let ultimoEstado = '';
 
-// ----- Dibujo de la piñata (SVG) -----
-
+// ----- Piñata SVG -----
 const SVG = 'http://www.w3.org/2000/svg';
-const RADIO = 62; // centro de la piñata
-const LARGO = 112; // largo de cada pico
-
+const RADIO = 62;
+const LARGO = 112;
 const azar = (min, max) => min + Math.random() * (max - min);
 const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
 const entre = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
@@ -85,9 +71,7 @@ const xy = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
 
 function crear(etiqueta, atributos, padre) {
   const elemento = document.createElementNS(SVG, etiqueta);
-  for (const [nombre, valor] of Object.entries(atributos)) {
-    elemento.setAttribute(nombre, valor);
-  }
+  for (const [nombre, valor] of Object.entries(atributos)) elemento.setAttribute(nombre, valor);
   padre.append(elemento);
   return elemento;
 }
@@ -95,8 +79,6 @@ function crear(etiqueta, atributos, padre) {
 function dibujarPinata() {
   dibujo.replaceChildren();
   conos = [];
-
-  // Los picos se reparten alrededor del centro, dejando un hueco arriba para la cuerda
   const paso = (2 * Math.PI) / numeroDePicos;
   const mitad = Math.min(paso * 0.42, 0.55);
 
@@ -107,39 +89,27 @@ function dibujarPinata() {
     const punta = polar(RADIO + LARGO, angulo);
     const color = (i % 3) + 1;
     const franja = ((i + 1) % 3) + 1;
-
     const grupo = crear('g', {}, dibujo);
 
-    // Borla de papel en la punta
     for (let k = -2; k <= 2; k++) {
       const fin = polar(RADIO + LARGO + 22, angulo + k * 0.06);
       crear('path', { d: `M${xy(punta)} L${xy(fin)}`, class: `borla trazo-${((i + k + 3) % 3) + 1}` }, grupo);
     }
-
     crear('path', { d: `M${xy(base1)} L${xy(punta)} L${xy(base2)} Z`, class: `relleno-${color} contorno` }, grupo);
-
-    // Dos franjas en cada pico
     for (const [desde, hasta] of [[0.3, 0.42], [0.6, 0.69]]) {
       const puntos = [entre(base1, punta, desde), entre(base1, punta, hasta), entre(base2, punta, hasta), entre(base2, punta, desde)];
       crear('path', { d: `M${puntos.map(xy).join(' L')} Z`, class: `relleno-${franja}` }, grupo);
     }
-
     conos.push({ grupo, angulo, centro: polar(RADIO + LARGO * 0.45, angulo) });
   }
 
-  // Centro con papel de china
   const cuerpo = crear('g', {}, dibujo);
   crear('circle', { r: RADIO, class: 'relleno-cuerpo contorno' }, cuerpo);
-  [RADIO - 10, RADIO - 32].forEach((r, i) => {
-    crear('circle', { r, class: `fleco trazo-${(i % 3) + 1}` }, cuerpo);
-  });
-
-  // Grietas: aparecen poco a poco con cada golpe
+  [RADIO - 10, RADIO - 32].forEach((r, i) => crear('circle', { r, class: `fleco trazo-${(i % 3) + 1}` }, cuerpo));
   const capaGrietas = crear('g', {}, dibujo);
   grietas = [];
-  const total = 6;
-  for (let i = 0; i < total; i++) {
-    const angulo = (i / total) * 2 * Math.PI + azar(-0.3, 0.3);
+  for (let i = 0; i < 6; i++) {
+    const angulo = (i / 6) * 2 * Math.PI + azar(-0.3, 0.3);
     let r = azar(4, 18);
     let d = `M${xy(polar(r, angulo))}`;
     while (r < RADIO + 45) {
@@ -151,10 +121,9 @@ function dibujarPinata() {
   grietas.sort(() => Math.random() - 0.5);
 }
 
-// ----- Golpes -----
-
 function cantar() {
   verso.textContent = letra[linea % letra.length];
+  terminal.textContent = verso.textContent;
   linea++;
   reiniciarAnimacion(verso, 'nuevo');
 }
@@ -163,6 +132,18 @@ function reiniciarAnimacion(elemento, clase) {
   elemento.classList.remove(clase);
   void elemento.offsetWidth;
   elemento.classList.add(clase);
+}
+
+function actualizarHUD() {
+  const porcentaje = Math.max(0, Math.round((1 - golpes / golpesNecesarios) * 100));
+  marcador.innerHTML = `${String(golpes).padStart(2, '0')} <span>/ ${golpesNecesarios}</span>`;
+  integridadFill.style.transform = `scaleX(${porcentaje / 100})`;
+  integridadValor.textContent = `${porcentaje}%`;
+  integridadTrack.setAttribute('aria-valuenow', String(porcentaje));
+  if (porcentaje <= 25 && ultimoEstado !== 'critical') {
+    terminal.textContent = '[HNR] STRUCTURAL INTEGRITY: CRITICAL';
+    ultimoEstado = 'critical';
+  }
 }
 
 function batear(x, y) {
@@ -191,16 +172,13 @@ function pegar(x, y) {
   batear(x, y);
   mostrarTexto(x, y, golpesFuertes[Math.floor(Math.random() * golpesFuertes.length)]);
   reiniciarAnimacion(dibujo, 'golpe');
-
-  // Si le pegas del lado izquierdo, la piñata se va a la derecha (y al revés)
+  reiniciarAnimacion(patio, 'hit-flash');
   const caja = pinata.getBoundingClientRect();
   const direccion = x < caja.left + caja.width / 2 ? -1 : 1;
   pendulo.velocidad += direccion * azar(70, 120);
-
   const visibles = Math.floor((golpes / golpesNecesarios) * (grietas.length + 1));
   grietas.forEach((grieta, i) => grieta.classList.toggle('visible', i < visibles));
-  marcador.textContent = `Golpes: ${golpes}`;
-
+  actualizarHUD();
   if (golpes >= golpesNecesarios) romper();
 }
 
@@ -209,37 +187,41 @@ function fallar(x, y) {
   intentos++;
   cantar();
   batear(x, y);
-  mostrarTexto(x, y, '¡Aire!', 'aire');
+  mostrarTexto(x, y, '¡AIRE!', 'aire');
 }
 
-// Con el dedo o el mouse: solo cuenta si tocas el dibujo
 pinata.addEventListener('pointerdown', (evento) => {
   evento.stopPropagation();
   pegar(evento.clientX, evento.clientY);
 });
-
-// Con el teclado (Enter o espacio)
 pinata.addEventListener('click', (evento) => {
   if (evento.detail !== 0) return;
   const caja = pinata.getBoundingClientRect();
   pegar(caja.left + caja.width * azar(0.3, 0.7), caja.top + caja.height * 0.5);
 });
-
 patio.addEventListener('pointerdown', (evento) => {
-  if (evento.target.closest('.final')) return;
+  if (evento.target.closest('.final') || evento.target.closest('#hit-action')) return;
   fallar(evento.clientX, evento.clientY);
 });
+botonGolpe.addEventListener('click', () => {
+  if (rota) return;
+  const caja = pinata.getBoundingClientRect();
+  pegar(caja.left + caja.width * 0.5, caja.top + caja.height * 0.5);
+});
 
-// ----- ¡Se rompió! -----
-
+// ----- Ruptura, confeti y recompensas -----
 function agregarPieza(pieza) {
   capa.append(pieza.el);
   piezas.push({ giro: 0, vgiro: 0, gravedad: 1400, ...pieza });
 }
 
 function romper() {
+  if (rota) return;
   rota = true;
-  // Las posiciones son relativas a la tarjeta, que es donde caen los dulces
+  botonGolpe.disabled = true;
+  terminal.textContent = '[HNR] REWARDS RELEASED';
+  patio.classList.add('screen-glitch');
+  setTimeout(() => patio.classList.remove('screen-glitch'), 420);
   const origen = capa.getBoundingClientRect();
   const caja = dibujo.getBoundingClientRect();
   const tam = dibujo.offsetWidth;
@@ -248,7 +230,6 @@ function romper() {
   const escala = tam / 400;
 
   if (!sinMovimiento) {
-    // Cada pico sale volando por su lado
     for (const cono of conos) {
       const svg = document.createElementNS(SVG, 'svg');
       svg.setAttribute('viewBox', '-200 -200 400 400');
@@ -257,64 +238,30 @@ function romper() {
       svg.style.transformOrigin = `${(cono.centro[0] + 200) * escala}px ${(cono.centro[1] + 200) * escala}px`;
       svg.append(cono.grupo.cloneNode(true));
       const fuerza = azar(220, 420);
-      agregarPieza({
-        el: svg,
-        tipo: 'fragmento',
-        x: centroX - tam / 2,
-        y: centroY - tam / 2,
-        vx: Math.cos(cono.angulo) * fuerza,
-        vy: Math.sin(cono.angulo) * fuerza - 250,
-        vgiro: azar(-300, 300),
-        vida: 1.6,
-      });
+      agregarPieza({ el: svg, tipo: 'fragmento', x: centroX - tam / 2, y: centroY - tam / 2, vx: Math.cos(cono.angulo) * fuerza, vy: Math.sin(cono.angulo) * fuerza - 250, vgiro: azar(-300, 300), vida: 1.6 });
     }
-
-    // Confeti de papel de china
     for (let i = 0; i < 45; i++) {
       const confeti = document.createElement('span');
       confeti.className = 'confeti';
       confeti.style.background = `var(${['--color-1', '--color-2', '--color-3', '--cuerpo'][i % 4]})`;
-      agregarPieza({
-        el: confeti,
-        tipo: 'confeti',
-        x: centroX + azar(-30, 30),
-        y: centroY + azar(-30, 30),
-        vx: azar(-380, 380),
-        vy: azar(-650, -150),
-        vgiro: azar(-720, 720),
-        gravedad: 700,
-        fase: azar(0, 6),
-        vida: azar(2.5, 4),
-      });
+      agregarPieza({ el: confeti, tipo: 'confeti', x: centroX + azar(-30, 30), y: centroY + azar(-30, 30), vx: azar(-380, 380), vy: azar(-650, -150), vgiro: azar(-720, 720), gravedad: 700, fase: azar(0, 6), vida: azar(2.5, 4) });
     }
   }
 
-  // Los dulces caen al piso
   for (let i = 0; i < 28; i++) {
     const dulce = document.createElement('span');
     dulce.className = 'dulce';
     dulce.textContent = contenido[i % contenido.length];
-    const pieza = {
-      el: dulce,
-      tipo: 'dulce',
-      x: centroX + azar(-20, 20),
-      y: centroY + azar(-20, 20),
-      vx: azar(-280, 280),
-      vy: azar(-560, -120),
-      vgiro: azar(-400, 400),
-      suelo: capa.clientHeight - azar(18, 46),
-    };
+    const pieza = { el: dulce, tipo: 'dulce', x: centroX + azar(-20, 20), y: centroY + azar(-20, 20), vx: azar(-280, 280), vy: azar(-560, -120), vgiro: azar(-400, 400), suelo: capa.clientHeight - azar(18, 46) };
     dulce.addEventListener('pointerdown', () => juntar(pieza));
     agregarPieza(pieza);
   }
 
   pinata.hidden = true;
-  marcador.hidden = true;
   verso.textContent = '';
   bolsa.hidden = false;
-
   setTimeout(() => {
-    resumen.textContent = `Le pegaste ${golpes} ${golpes === 1 ? 'vez' : 'veces'} en ${intentos} ${intentos === 1 ? 'intento' : 'intentos'}. Toca los dulces para juntarlos.`;
+    resumen.textContent = `CHAOS CLEARED // ${golpes} hits, ${intentos} attempts. Collect your symbolic rewards.`;
     final.hidden = false;
     botonOtra.focus({ preventScroll: true });
   }, 700);
@@ -327,14 +274,14 @@ function juntar(pieza) {
   const destino = bolsa.getBoundingClientRect();
   const x = destino.left + destino.width / 2 - origen.left;
   const y = destino.top + destino.height / 2 - origen.top;
-  pieza.el.style.transition = 'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
-  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
+  pieza.el.style.transition = 'transform .45s cubic-bezier(.5,-.4,.7,1), opacity .45s ease';
+  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(.4)`;
   pieza.el.style.opacity = '0';
   setTimeout(() => {
     pieza.el.remove();
     piezas = piezas.filter((otra) => otra !== pieza);
     juntados++;
-    contadorBolsa.textContent = juntados;
+    contadorBolsa.textContent = String(juntados);
     reiniciarAnimacion(bolsa, 'lleno');
   }, 450);
 }
@@ -344,21 +291,26 @@ botonOtra.addEventListener('click', () => {
   piezas = [];
   golpes = 0;
   intentos = 0;
+  juntados = 0;
   linea = 0;
   rota = false;
+  ultimoEstado = '';
   pendulo.angulo = 0;
   pendulo.velocidad = 0;
   dibujarPinata();
   pinata.hidden = false;
+  botonGolpe.disabled = false;
   marcador.hidden = false;
-  marcador.textContent = 'Golpes: 0';
-  verso.textContent = 'Toca la piñata para pegarle';
+  actualizarHUD();
+  verso.textContent = '[HNR] CHAOS PROTOCOL ACTIVATED';
+  terminal.textContent = verso.textContent;
+  bolsa.hidden = true;
+  contadorBolsa.textContent = '0';
   final.hidden = true;
-  pinata.focus({ preventScroll: true });
+  botonGolpe.focus({ preventScroll: true });
 });
 
-// ----- Movimiento: la piñata se mece y la suben y bajan -----
-
+// ----- Movimiento pendular original (CHAOS 3/3) -----
 const pendulo = { angulo: 0, velocidad: 0 };
 let tiempo = 0;
 let anterior = performance.now();
@@ -370,7 +322,6 @@ addEventListener('resize', () => { largoCuerda = cuerda.offsetHeight; });
 function moverPiezas(dt) {
   for (const p of piezas) {
     if (p.juntado || p.quieto) continue;
-
     p.vy += p.gravedad * dt;
     if (p.tipo === 'confeti') {
       p.vx *= 1 - 1.8 * dt;
@@ -380,7 +331,6 @@ function moverPiezas(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.giro += p.vgiro * dt;
-
     if (p.tipo === 'dulce') {
       if (p.y > p.suelo) {
         p.y = p.suelo;
@@ -402,28 +352,19 @@ function moverPiezas(dt) {
       p.el.style.transform = `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
     }
   }
-
   piezas = piezas.filter((p) => {
-    if (p.vida !== undefined && p.vida <= 0) {
-      p.el.remove();
-      return false;
-    }
+    if (p.vida !== undefined && p.vida <= 0) { p.el.remove(); return false; }
     return true;
   });
 }
 
 function animar(ahora) {
-  const dt = Math.min(0.05, (ahora - anterior) / 1000);
+  const dt = Math.min(.05, (ahora - anterior) / 1000);
   anterior = ahora;
   tiempo += dt * movimiento.rapidez;
-
-  // Un péndulo con resorte: se mece solo y reacciona a cada golpe
-  // Dos vaivenes mezclados para que no sea fácil adivinar a dónde va
-  const objetivo = movimiento.mecer * (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
+  const objetivo = movimiento.mecer * (.65 * Math.sin(tiempo * 1.3) + .35 * Math.sin(tiempo * 2.9 + 1));
   pendulo.velocidad += (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
   pendulo.angulo += pendulo.velocidad * dt;
-
-  // De vez en cuando, quien jala la cuerda le da un jalón hacia arriba
   if (movimiento.subir > 0) {
     siguienteJalon -= dt;
     if (siguienteJalon <= 0) {
@@ -434,15 +375,14 @@ function animar(ahora) {
     jalon = Math.max(0, jalon - dt * 1.8);
   }
   const subida = 1 - Math.sin(jalon * Math.PI);
-  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (0.6 + 0.4 * Math.sin(tiempo * 0.5)) * subida;
-
+  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (.6 + .4 * Math.sin(tiempo * .5)) * subida;
   colgante.style.transform = `rotate(${pendulo.angulo}deg)`;
   cuerda.style.transform = `scaleY(${(largoCuerda + bajada) / largoCuerda})`;
   pinata.style.transform = `translateY(${bajada}px)`;
-
   moverPiezas(dt);
   requestAnimationFrame(animar);
 }
 
 dibujarPinata();
+actualizarHUD();
 requestAnimationFrame(animar);
