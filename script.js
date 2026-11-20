@@ -148,6 +148,10 @@ function dibujarPinata() {
   const vertices = crearVerticesIcosaedro();
   const caras = crearCaras(vertices);
 
+  // ===== Papel picado (arriba) =====
+  dibujarPapelPicado();
+
+  // ===== Caras del icosaedro =====
   caras.forEach((cara, i) => {
     const grupo = crear('g', {}, dibujo);
 
@@ -167,6 +171,7 @@ function dibujarPinata() {
       opacity: opacidad,
     }, grupo);
 
+    // Detalle interior
     const centro = cara.centro;
     const interior = cara.vertices.map(([x, y]) => [
       x * 0.72 + centro[0] * 0.28,
@@ -174,14 +179,15 @@ function dibujarPinata() {
     ]);
 
     crear('polygon', {
-      points: interior
-        .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-        .join(' '),
+      points: interior.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
       fill: 'none',
       stroke: '#C7B182',
       'stroke-width': '1.5',
       opacity: '0.65',
     }, grupo);
+
+    // Tiras de papel en los bordes de la cara
+    dibujarTirasDePapel(cara, grupo);
 
     conos.push({
       grupo,
@@ -207,59 +213,101 @@ function dibujarPinata() {
       ];
       d += ` L${xy(p)}`;
     }
-
     grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
   }
 
   grietas.sort(() => Math.random() - 0.5);
 }
 
-// ===== Utilidades =====
-function actualizarMarcador() {
-  marcador.innerHTML = `${golpes} <span>/ ${golpesNecesarios}</span>`;
+// ===== Papel picado (banner arriba) =====
+function dibujarPapelPicado() {
+  const grupo = crear('g', {}, dibujo);
+  const ancho = 280;
+  const alto = 36;
+  const y = -RADIO - 55;
+
+  crear('rect', {
+    x: -ancho / 2,
+    y: y,
+    width: ancho,
+    height: alto,
+    fill: '#D726D7',
+    opacity: '0.85',
+  }, grupo);
+
+  const cortes = 11;
+  for (let i = 0; i < cortes; i++) {
+    const x = -ancho / 2 + (ancho / cortes) * i + (ancho / cortes) / 2;
+    const tipo = i % 3;
+
+    if (tipo === 0) {
+      crear('circle', {
+        cx: x,
+        cy: y + alto / 2,
+        r: 5.5,
+        fill: '#171316',
+      }, grupo);
+    } else if (tipo === 1) {
+      crear('path', {
+        d: `M${x - 5} ${y + alto - 6} L${x + 5} ${y + alto - 6} L${x} ${y + 6} Z`,
+        fill: '#171316',
+      }, grupo);
+    } else {
+      crear('rect', {
+        x: x - 3,
+        y: y + 8,
+        width: 6,
+        height: 14,
+        fill: '#171316',
+      }, grupo);
+    }
+  }
+
+  crear('rect', {
+    x: -ancho / 2,
+    y: y,
+    width: ancho,
+    height: 4,
+    fill: '#C7B182',
+  }, grupo);
+  crear('rect', {
+    x: -ancho / 2,
+    y: y + alto - 4,
+    width: ancho,
+    height: 4,
+    fill: '#C7B182',
+  }, grupo);
 }
 
-function actualizarIntegridad() {
-  const pct = Math.max(0, Math.round(100 - (golpes / golpesNecesarios) * 100));
-  if (integrityValue) integrityValue.textContent = `${pct}%`;
-  if (integrityFill) integrityFill.style.transform = `scaleX(${pct / 100})`;
-  if (integrityTrack) integrityTrack.setAttribute('aria-valuenow', pct);
-}
+// ===== Tiras de papel en los bordes =====
+function dibujarTirasDePapel(cara, grupo) {
+  const verts = cara.vertices;
+  const colores = ['#C7B182', '#D726D7', '#634F5F'];
 
-function actualizarTerminal(texto) {
-  if (terminalMessage) terminalMessage.textContent = texto;
-}
+  for (let i = 0; i < 3; i++) {
+    const a = verts[i];
+    const b = verts[(i + 1) % 3];
 
-function cantar() {
-  const texto = letra[linea % letra.length];
-  verso.textContent = texto;
-  actualizarTerminal(`[HNR] ${texto}`);
-  linea++;
-  reiniciarAnimacion(verso, 'nuevo');
-}
+    const mx = (a[0] + b[0]) / 2;
+    const my = (a[1] + b[1]) / 2;
 
-function reiniciarAnimacion(el, clase) {
-  el.classList.remove(clase);
-  void el.offsetWidth;
-  el.classList.add(clase);
-}
+    const angulo = Math.atan2(my, mx);
+    const largo = azar(18, 32);
+    const grosor = azar(2.2, 3.8);
 
-function batear(x, y) {
-  const lado = x < innerWidth / 2 ? 'izquierda' : 'derecha';
-  palo.className = `palo ${lado}`;
-  palo.style.left = `${x}px`;
-  palo.style.top = `${y}px`;
-  reiniciarAnimacion(palo, 'activo');
-}
+    const x1 = mx;
+    const y1 = my;
+    const x2 = mx + Math.cos(angulo) * largo;
+    const y2 = my + Math.sin(angulo) * largo;
 
-function mostrarTexto(x, y, texto, clase = '') {
-  const p = document.createElement('p');
-  p.className = `pum ${clase}`;
-  p.textContent = texto;
-  p.style.left = `${x}px`;
-  p.style.top = `${y}px`;
-  p.addEventListener('animationend', () => p.remove());
-  document.body.append(p);
+    crear('line', {
+      x1, y1, x2, y2,
+      stroke: colores[i % colores.length],
+      'stroke-width': grosor,
+      'stroke-linecap': 'round',
+      opacity: '0.9',
+    }, grupo);
+  }
 }
 
 // ===== Golpes =====
