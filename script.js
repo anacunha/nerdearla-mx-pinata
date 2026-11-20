@@ -1,26 +1,3 @@
-El principal problema es que la piñata (icosaedro) no se dibuja correctamente porque la detección de caras está rota por el escalado.
-Bugs importantes encontrados
-
-    Detección de caras del icosaedro (crítico)
-    Los vértices se escalan por ESCALA = 72 antes de buscar las caras, pero el código compara la distancia al cuadrado contra 4 (valor correcto solo para el icosaedro sin escalar).
-    La distancia al cuadrado real es 4 * 72² = 20736.
-    Resultado: caras queda vacío → no se dibuja nada (o casi nada).
-
-    Reinicio incompleto del juego
-    Al pulsar “Otra vez”:
-        juntados no se resetea a 0.
-        El contador de la bolsa no vuelve a 0.
-        La bolsa no se vuelve a ocultar (bolsa.hidden = true).
-
-    Otros detalles menores (no rompen el juego, pero conviene limpiar):
-        pendulo se usa en el listener de reinicio antes de estar declarado (funciona por timing, pero es frágil).
-        Falta tolerancia un poco más generosa por punto flotante después del escalado + rotación.
-
-Versión corregida del JS
-
-Aquí tienes el código completo con las correcciones aplicadas (he marcado con comentarios // FIX los cambios principales):
-javascript
-
 // ===== HNR LABS — JAILBREAK THE PIÑATA =====
 
 // Premios dentro del icosaedro
