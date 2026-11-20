@@ -1,4 +1,4 @@
-// ===== HNR LABS — THE MOSH PIT PIÑATA (ICOSAEDRO) =====
+// ===== HNR LABS — THE MOSH PIT PIÑATA (ESTRELLA) =====
 
 const dulces = [
   '🎟️', '🎫', '🎸', '🤘',
@@ -7,6 +7,7 @@ const dulces = [
   '🍯', '🥥'
 ];
 
+const picos = 7;
 const resistencia = 20;
 const travesura = 3;
 
@@ -32,10 +33,9 @@ const niveles = [
   { mecer: 36, subir: 140, rapidez: 2.1 },
 ];
 
-const limitar = (n, min, max) =>
-  Math.min(max, Math.max(min, Math.round(Number(n) || 0)));
-
+const limitar = (n, min, max) => Math.min(max, Math.max(min, Math.round(Number(n) || 0)));
 const golpesNecesarios = limitar(resistencia, 1, 999);
+const numeroDePicos = limitar(picos, 3, 12);
 const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const movimiento = sinMovimiento ? niveles[0] : niveles[limitar(travesura, 0, 3)];
 const contenido = dulces.length > 0 ? dulces : ['🍬'];
@@ -73,14 +73,14 @@ let conos = [];
 let grietas = [];
 let piezas = [];
 
-// ===== Icosaedro =====
+// ===== Dibujo de la piñata estrella =====
 const SVG = 'http://www.w3.org/2000/svg';
-const RADIO = 120;
-const PHI = (1 + Math.sqrt(5)) / 2;
-const ESCALA = 72;
-const EDGE_SQ = 4 * ESCALA * ESCALA;
+const RADIO = 62;
+const LARGO = 112;
 
 const azar = (min, max) => min + Math.random() * (max - min);
+const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const entre = (p, q, f) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
 const xy = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
 
 function crear(etiqueta, atributos, padre) {
@@ -90,128 +90,78 @@ function crear(etiqueta, atributos, padre) {
   return el;
 }
 
-function crearVerticesIcosaedro() {
-  const verts = [
-    [0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
-    [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
-    [PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, 1], [-PHI, 0, -1],
-  ];
-
-  const rx = 0.28;
-  const ry = 0.42;
-
-  return verts.map(([x, y, z]) => {
-    const y1 = y * Math.cos(rx) - z * Math.sin(rx);
-    const z1 = y * Math.sin(rx) + z * Math.cos(rx);
-    const x2 = x * Math.cos(ry) + z1 * Math.sin(ry);
-    const z2 = -x * Math.sin(ry) + z1 * Math.cos(ry);
-    return [x2 * ESCALA, y1 * ESCALA, z2 * ESCALA];
-  });
-}
-
-function crearCaras(vertices) {
-  const caras = [];
-
-  for (let i = 0; i < vertices.length; i++) {
-    for (let j = i + 1; j < vertices.length; j++) {
-      for (let k = j + 1; k < vertices.length; k++) {
-        const a = vertices[i];
-        const b = vertices[j];
-        const c = vertices[k];
-
-        const dist = (p, q) =>
-          (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
-
-        if (
-          Math.abs(dist(a, b) - EDGE_SQ) < 5 &&
-          Math.abs(dist(b, c) - EDGE_SQ) < 5 &&
-          Math.abs(dist(c, a) - EDGE_SQ) < 5
-        ) {
-          caras.push({
-            vertices: [a, b, c],
-            profundidad: (a[2] + b[2] + c[2]) / 3,
-            centro: [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3],
-          });
-        }
-      }
-    }
-  }
-
-  caras.sort((a, b) => a.profundidad - b.profundidad);
-  return caras;
-}
-
 function dibujarPinata() {
   dibujo.replaceChildren();
   conos = [];
 
-  const vertices = crearVerticesIcosaedro();
-  const caras = crearCaras(vertices);
+  const paso = (2 * Math.PI) / numeroDePicos;
+  const mitad = Math.min(paso * 0.42, 0.55);
 
-  // ===== Papel picado (arriba) =====
-  dibujarPapelPicado();
+  for (let i = 0; i < numeroDePicos; i++) {
+    const angulo = -Math.PI / 2 + paso / 2 + i * paso;
+    const base1 = polar(RADIO * 0.85, angulo - mitad);
+    const base2 = polar(RADIO * 0.85, angulo + mitad);
+    const punta = polar(RADIO + LARGO, angulo);
+    const color = (i % 3) + 1;
+    const franja = ((i + 1) % 3) + 1;
 
-  // ===== Caras del icosaedro =====
-  caras.forEach((cara, i) => {
     const grupo = crear('g', {}, dibujo);
 
-    const puntos = cara.vertices
-      .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-      .join(' ');
+    // Borlas
+    for (let k = -2; k <= 2; k++) {
+      const fin = polar(RADIO + LARGO + 22, angulo + k * 0.06);
+      crear('path', {
+        d: `M${xy(punta)} L${xy(fin)}`,
+        class: `borla trazo-${((i + k + 3) % 3) + 1}`,
+      }, grupo);
+    }
 
-    const color = (i % 3) + 1;
-    const opacidad = Math.max(
-      0.4,
-      Math.min(1, 0.55 + (cara.profundidad / (PHI * ESCALA)) * 0.45)
-    );
-
-    crear('polygon', {
-      points: puntos,
+    crear('path', {
+      d: `M${xy(base1)} L${xy(punta)} L${xy(base2)} Z`,
       class: `relleno-${color} contorno`,
-      opacity: opacidad,
     }, grupo);
 
-    // Detalle interior
-    const centro = cara.centro;
-    const interior = cara.vertices.map(([x, y]) => [
-      x * 0.72 + centro[0] * 0.28,
-      y * 0.72 + centro[1] * 0.28,
-    ]);
-
-    crear('polygon', {
-      points: interior.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
-      fill: 'none',
-      stroke: '#C7B182',
-      'stroke-width': '1.5',
-      opacity: '0.65',
-    }, grupo);
-
-    // Tiras de papel en los bordes de la cara
-    dibujarTirasDePapel(cara, grupo);
+    // Franjas
+    for (const [desde, hasta] of [[0.3, 0.42], [0.6, 0.69]]) {
+      const puntos = [
+        entre(base1, punta, desde),
+        entre(base1, punta, hasta),
+        entre(base2, punta, hasta),
+        entre(base2, punta, desde),
+      ];
+      crear('path', {
+        d: `M${puntos.map(xy).join(' L')} Z`,
+        class: `relleno-${franja}`,
+      }, grupo);
+    }
 
     conos.push({
       grupo,
-      angulo: Math.atan2(centro[1], centro[0]),
-      centro,
+      angulo,
+      centro: polar(RADIO + LARGO * 0.45, angulo),
     });
+  }
+
+  // Cuerpo central
+  const cuerpo = crear('g', {}, dibujo);
+  crear('circle', { r: RADIO, class: 'relleno-cuerpo contorno' }, cuerpo);
+  [RADIO - 10, RADIO - 32].forEach((r, i) => {
+    crear('circle', { r, class: `fleco trazo-${(i % 3) + 1}` }, cuerpo);
   });
 
   // Grietas
   const capaGrietas = crear('g', {}, dibujo);
   grietas = [];
+  const total = 6;
 
-  for (let i = 0; i < 8; i++) {
-    const angulo = (i / 8) * 2 * Math.PI + azar(-0.3, 0.3);
+  for (let i = 0; i < total; i++) {
+    const angulo = (i / total) * 2 * Math.PI + azar(-0.3, 0.3);
     let r = azar(4, 18);
-    let d = `M${xy([r * Math.cos(angulo), r * Math.sin(angulo)])}`;
+    let d = `M${xy(polar(r, angulo))}`;
 
-    while (r < RADIO + 25) {
+    while (r < RADIO + 45) {
       r += azar(14, 24);
-      const p = [
-        r * Math.cos(angulo + azar(-0.35, 0.35)),
-        r * Math.sin(angulo + azar(-0.35, 0.35)),
-      ];
-      d += ` L${xy(p)}`;
+      d += ` L${xy(polar(r, angulo + azar(-0.35, 0.35)))}`;
     }
     grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
   }
@@ -219,95 +169,52 @@ function dibujarPinata() {
   grietas.sort(() => Math.random() - 0.5);
 }
 
-// ===== Papel picado (banner arriba) =====
-function dibujarPapelPicado() {
-  const grupo = crear('g', {}, dibujo);
-  const ancho = 280;
-  const alto = 36;
-  const y = -RADIO - 55;
-
-  crear('rect', {
-    x: -ancho / 2,
-    y: y,
-    width: ancho,
-    height: alto,
-    fill: '#D726D7',
-    opacity: '0.85',
-  }, grupo);
-
-  const cortes = 11;
-  for (let i = 0; i < cortes; i++) {
-    const x = -ancho / 2 + (ancho / cortes) * i + (ancho / cortes) / 2;
-    const tipo = i % 3;
-
-    if (tipo === 0) {
-      crear('circle', {
-        cx: x,
-        cy: y + alto / 2,
-        r: 5.5,
-        fill: '#171316',
-      }, grupo);
-    } else if (tipo === 1) {
-      crear('path', {
-        d: `M${x - 5} ${y + alto - 6} L${x + 5} ${y + alto - 6} L${x} ${y + 6} Z`,
-        fill: '#171316',
-      }, grupo);
-    } else {
-      crear('rect', {
-        x: x - 3,
-        y: y + 8,
-        width: 6,
-        height: 14,
-        fill: '#171316',
-      }, grupo);
-    }
-  }
-
-  crear('rect', {
-    x: -ancho / 2,
-    y: y,
-    width: ancho,
-    height: 4,
-    fill: '#C7B182',
-  }, grupo);
-  crear('rect', {
-    x: -ancho / 2,
-    y: y + alto - 4,
-    width: ancho,
-    height: 4,
-    fill: '#C7B182',
-  }, grupo);
+// ===== Utilidades =====
+function actualizarMarcador() {
+  marcador.innerHTML = `${golpes} <span>/ ${golpesNecesarios}</span>`;
 }
 
-// ===== Tiras de papel en los bordes =====
-function dibujarTirasDePapel(cara, grupo) {
-  const verts = cara.vertices;
-  const colores = ['#C7B182', '#D726D7', '#634F5F'];
+function actualizarIntegridad() {
+  const pct = Math.max(0, Math.round(100 - (golpes / golpesNecesarios) * 100));
+  if (integrityValue) integrityValue.textContent = `${pct}%`;
+  if (integrityFill) integrityFill.style.transform = `scaleX(${pct / 100})`;
+  if (integrityTrack) integrityTrack.setAttribute('aria-valuenow', pct);
+}
 
-  for (let i = 0; i < 3; i++) {
-    const a = verts[i];
-    const b = verts[(i + 1) % 3];
+function actualizarTerminal(texto) {
+  if (terminalMessage) terminalMessage.textContent = texto;
+}
 
-    const mx = (a[0] + b[0]) / 2;
-    const my = (a[1] + b[1]) / 2;
+function cantar() {
+  const texto = letra[linea % letra.length];
+  verso.textContent = texto;
+  actualizarTerminal(`[HNR] ${texto}`);
+  linea++;
+  reiniciarAnimacion(verso, 'nuevo');
+}
 
-    const angulo = Math.atan2(my, mx);
-    const largo = azar(18, 32);
-    const grosor = azar(2.2, 3.8);
+function reiniciarAnimacion(el, clase) {
+  el.classList.remove(clase);
+  void el.offsetWidth;
+  el.classList.add(clase);
+}
 
-    const x1 = mx;
-    const y1 = my;
-    const x2 = mx + Math.cos(angulo) * largo;
-    const y2 = my + Math.sin(angulo) * largo;
+function batear(x, y) {
+  const lado = x < innerWidth / 2 ? 'izquierda' : 'derecha';
+  palo.className = `palo ${lado}`;
+  palo.style.left = `${x}px`;
+  palo.style.top = `${y}px`;
+  reiniciarAnimacion(palo, 'activo');
+}
 
-    crear('line', {
-      x1, y1, x2, y2,
-      stroke: colores[i % colores.length],
-      'stroke-width': grosor,
-      'stroke-linecap': 'round',
-      opacity: '0.9',
-    }, grupo);
-  }
+function mostrarTexto(x, y, texto, clase = '') {
+  const p = document.createElement('p');
+  p.className = `pum ${clase}`;
+  p.textContent = texto;
+  p.style.left = `${x}px`;
+  p.style.top = `${y}px`;
+  p.addEventListener('animationend', () => p.remove());
+  document.body.append(p);
 }
 
 // ===== Golpes =====
@@ -387,14 +294,13 @@ function romper() {
   const escala = tam / 400;
 
   if (!sinMovimiento) {
-    for (const cara of conos) {
+    for (const cono of conos) {
       const svg = document.createElementNS(SVG, 'svg');
       svg.setAttribute('viewBox', '-200 -200 400 400');
       svg.setAttribute('class', 'fragmento');
       svg.style.width = svg.style.height = `${tam}px`;
-      svg.style.transformOrigin =
-        `${(cara.centro[0] + 200) * escala}px ${(cara.centro[1] + 200) * escala}px`;
-      svg.append(cara.grupo.cloneNode(true));
+      svg.style.transformOrigin = `${(cono.centro[0] + 200) * escala}px ${(cono.centro[1] + 200) * escala}px`;
+      svg.append(cono.grupo.cloneNode(true));
 
       const fuerza = azar(220, 420);
       agregarPieza({
@@ -402,8 +308,8 @@ function romper() {
         tipo: 'fragmento',
         x: centroX - tam / 2,
         y: centroY - tam / 2,
-        vx: Math.cos(cara.angulo) * fuerza,
-        vy: Math.sin(cara.angulo) * fuerza - 250,
+        vx: Math.cos(cono.angulo) * fuerza,
+        vy: Math.sin(cono.angulo) * fuerza - 250,
         vgiro: azar(-300, 300),
         vida: 1.6,
       });
@@ -473,10 +379,8 @@ function juntar(pieza) {
   const x = destino.left + destino.width / 2 - origen.left;
   const y = destino.top + destino.height / 2 - origen.top;
 
-  pieza.el.style.transition =
-    'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
-  pieza.el.style.transform =
-    `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
+  pieza.el.style.transition = 'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
+  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
   pieza.el.style.opacity = '0';
 
   setTimeout(() => {
@@ -512,7 +416,7 @@ botonOtra.addEventListener('click', () => {
   actualizarMarcador();
   actualizarIntegridad();
 
-  verso.textContent = 'Toca el icosaedro para pegarle';
+  verso.textContent = 'Toca la piñata para pegarle';
   actualizarTerminal('[HNR] CHAOS PROTOCOL ACTIVATED');
   final.hidden = true;
 
@@ -561,14 +465,12 @@ function moverPiezas(dt) {
         p.vx *= -0.5;
       }
 
-      p.el.style.transform =
-        `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
     } else {
       p.vida -= dt;
       p.el.style.opacity = Math.min(1, Math.max(0, p.vida));
       const centrar = p.tipo === 'confeti' ? ' translate(-50%, -50%)' : '';
-      p.el.style.transform =
-        `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
     }
   }
 
@@ -586,12 +488,9 @@ function animar(ahora) {
   anterior = ahora;
   tiempo += dt * movimiento.rapidez;
 
-  const objetivo =
-    movimiento.mecer *
-    (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
+  const objetivo = movimiento.mecer * (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
 
-  pendulo.velocidad +=
-    (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
+  pendulo.velocidad += (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
   pendulo.angulo += pendulo.velocidad * dt;
 
   if (movimiento.subir > 0) {
@@ -605,11 +504,7 @@ function animar(ahora) {
   }
 
   const subida = 1 - Math.sin(jalon * Math.PI);
-  const bajada =
-    movimiento.subir *
-    ((1 - Math.cos(tiempo * 1.6)) / 2) *
-    (0.6 + 0.4 * Math.sin(tiempo * 0.5)) *
-    subida;
+  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (0.6 + 0.4 * Math.sin(tiempo * 0.5)) * subida;
 
   colgante.style.transform = `rotate(${pendulo.angulo}deg)`;
   cuerda.style.transform = `scaleY(${(largoCuerda + bajada) / largoCuerda})`;
