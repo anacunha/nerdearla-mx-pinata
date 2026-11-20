@@ -1,22 +1,70 @@
+El principal problema es que la piñata (icosaedro) no se dibuja correctamente porque la detección de caras está rota por el escalado.
+Bugs importantes encontrados
+
+    Detección de caras del icosaedro (crítico)
+    Los vértices se escalan por ESCALA = 72 antes de buscar las caras, pero el código compara la distancia al cuadrado contra 4 (valor correcto solo para el icosaedro sin escalar).
+    La distancia al cuadrado real es 4 * 72² = 20736.
+    Resultado: caras queda vacío → no se dibuja nada (o casi nada).
+
+    Reinicio incompleto del juego
+    Al pulsar “Otra vez”:
+        juntados no se resetea a 0.
+        El contador de la bolsa no vuelve a 0.
+        La bolsa no se vuelve a ocultar (bolsa.hidden = true).
+
+    Otros detalles menores (no rompen el juego, pero conviene limpiar):
+        pendulo se usa en el listener de reinicio antes de estar declarado (funciona por timing, pero es frágil).
+        Falta tolerancia un poco más generosa por punto flotante después del escalado + rotación.
+
+Versión corregida del JS
+
+Aquí tienes el código completo con las correcciones aplicadas (he marcado con comentarios // FIX los cambios principales):
+javascript
+
 // ===== HNR LABS — JAILBREAK THE PIÑATA =====
-// Icosaedro interactivo: 20 caras triangulares
 
 // Premios dentro del icosaedro
 const dulces = [
   '🎟️', '🎫', '🎸', '🤘',
   '🥭', '🍊', '🍍', '🍉',
   '🍬', '🍭', '🍫', '🥜',
-  '🍪', '🍡', '🍬', '🍭',
-  '🎟️', '🎸', '🥭', '🍊'
+  '🍯', '🥥'
 ];
 
-// Configuración
-const resistenciaInicial = 20;
+const picos = 7; // Se conserva por compatibilidad; el icosaedro usa 20 caras.
+const resistencia = 20;
 const travesura = 3;
-const ESCALA = 72;
-const RADIO = 155;
 
-// Elementos del DOM
+// ===== A partir de aquí no necesitas cambiar nada =====
+
+const letra = [
+  'Dale, dale, dale,',
+  'no pierdas el tino,',
+  'porque si lo pierdes,',
+  'pierdes el camino.',
+  'Ya le diste uno,',
+  'ya le diste dos,',
+  'ya le diste tres',
+  '¡y tu tiempo se acabó!',
+];
+
+const golpesFuertes = ['¡Pum!', '¡Paf!', '¡Zas!', '¡Toing!', '¡Cuas!'];
+
+const niveles = [
+  { mecer: 0, subir: 0, rapidez: 1 },
+  { mecer: 16, subir: 30, rapidez: 1.2 },
+  { mecer: 26, subir: 80, rapidez: 1.5 },
+  { mecer: 36, subir: 140, rapidez: 2.1 },
+];
+
+const limitar = (n, min, max) =>
+  Math.min(max, Math.max(min, Math.round(Number(n) || 0)));
+
+const golpesNecesarios = limitar(resistencia, 1, 999);
+const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const movimiento = sinMovimiento ? niveles[0] : niveles[limitar(travesura, 0, 3)];
+const contenido = dulces.length > 0 ? dulces : ['🍬'];
+
 const patio = document.querySelector('#patio');
 const colgante = document.querySelector('#colgante');
 const cuerda = document.querySelector('#cuerda');
@@ -26,111 +74,65 @@ const verso = document.querySelector('#verso');
 const marcador = document.querySelector('#marcador');
 const final = document.querySelector('#final');
 const resumen = document.querySelector('#resumen');
-const otra = document.querySelector('#otra');
+const botonOtra = document.querySelector('#otra');
 const capa = document.querySelector('#capa');
 const palo = document.querySelector('#palo');
 const bolsa = document.querySelector('#bolsa');
 const contadorBolsa = document.querySelector('#contador-bolsa');
 
-// Estado del juego
-let resistencia = resistenciaInicial;
+document.title = document.querySelector('.titulo')?.textContent.trim() || 'Jailbreak the Piñata';
+patio?.style.setProperty('--subir', `${movimiento.subir}px`);
+
 let golpes = 0;
-let dulcesRecogidos = 0;
-let juegoTerminado = false;
-let golpeando = false;
-let moviendo = false;
-let posicionPalo = { x: 0, y: 0 };
-let angulo = 0;
-let direccion = 1;
-let animacionPalo = null;
-let animacionPinata = null;
-let carasIcosaedro = [];
+let intentos = 0;
+let rota = false;
+let juntados = 0;
+let linea = 0;
+let conos = [];
+let grietas = [];
+let piezas = [];
 
-// Versos del juego
-const versos = [
-  '¡Dale con ganas!',
-  '¡Que caigan los dulces!',
-  '¡Más fuerte!',
-  '¡La piñata no se rinde!',
-  '¡Ya casi, ya casi!',
-  '¡Un golpe más!',
-  '¡Que viva la fiesta!'
-];
+// ----- Icosaedro HNR Labs (SVG) -----
 
-// ===== CREAR VÉRTICES DEL ICOSAEDRO =====
+const SVG = 'http://www.w3.org/2000/svg';
+const RADIO = 120;
+const PHI = (1 + Math.sqrt(5)) / 2;
+const ESCALA = 72;
+const EDGE_SQ = 4 * ESCALA * ESCALA; // FIX: distancia al cuadrado correcta después del escalado
+
+const azar = (min, max) => min + Math.random() * (max - min);
+const xy = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+
+function crear(etiqueta, atributos, padre) {
+  const elemento = document.createElementNS(SVG, etiqueta);
+  for (const [nombre, valor] of Object.entries(atributos)) {
+    elemento.setAttribute(nombre, valor);
+  }
+  padre.append(elemento);
+  return elemento;
+}
 
 function crearVerticesIcosaedro() {
-  const phi = (1 + Math.sqrt(5)) / 2;
-
   const vertices = [
-    [-1,  phi,  0],
-    [ 1,  phi,  0],
-    [-1, -phi,  0],
-    [ 1, -phi,  0],
-
-    [ 0, -1,  phi],
-    [ 0,  1,  phi],
-    [ 0, -1, -phi],
-    [ 0,  1, -phi],
-
-    [ phi,  0, -1],
-    [ phi,  0,  1],
-    [-phi,  0, -1],
-    [-phi,  0,  1]
+    [0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
+    [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
+    [PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, 1], [-PHI, 0, -1],
   ];
 
+  const rotacionX = 0.28;
+  const rotacionY = 0.42;
+
   return vertices.map(([x, y, z]) => {
-    const factor = ESCALA;
-
-    let px = x * factor;
-    let py = y * factor;
-    let pz = z * factor;
-
-    // Rotación sobre el eje X
-    const rotX = 0.35;
-
-    const y1 = py * Math.cos(rotX) - pz * Math.sin(rotX);
-    const z1 = py * Math.sin(rotX) + pz * Math.cos(rotX);
-
-    py = y1;
-    pz = z1;
-
-    // Rotación sobre el eje Y
-    const rotY = 0.45;
-
-    const x2 = px * Math.cos(rotY) + pz * Math.sin(rotY);
-    const z2 = -px * Math.sin(rotY) + pz * Math.cos(rotY);
-
-    px = x2;
-    pz = z2;
-
-    return {
-      x: px,
-      y: py,
-      z: z2
-    };
+    const y1 = y * Math.cos(rotacionX) - z * Math.sin(rotacionX);
+    const z1 = y * Math.sin(rotacionX) + z * Math.cos(rotacionX);
+    const x2 = x * Math.cos(rotacionY) + z1 * Math.sin(rotacionY);
+    const z2 = -x * Math.sin(rotacionY) + z1 * Math.cos(rotacionY);
+    return [x2 * ESCALA, y1 * ESCALA, z2 * ESCALA];
   });
 }
 
-// ===== DISTANCIA ENTRE VÉRTICES =====
-
-function distancia(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  const dz = a.z - b.z;
-
-  return dx * dx + dy * dy + dz * dz;
-}
-
-// ===== DETECTAR LAS 20 CARAS =====
-
 function crearCaras(vertices) {
   const caras = [];
-
-  // Las aristas originales miden 2 unidades.
-  // Después de escalar por ESCALA, su distancia al cuadrado
-  // es 4 * ESCALA * ESCALA.
-  const distanciaArista = 4 * ESCALA * ESCALA;
 
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
@@ -139,617 +141,416 @@ function crearCaras(vertices) {
         const b = vertices[j];
         const c = vertices[k];
 
-        const ab = distancia(a, b);
-        const ac = distancia(a, c);
-        const bc = distancia(b, c);
+        const distancia = (p, q) =>
+          (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
 
+        // FIX: usamos EDGE_SQ en lugar de 4
         if (
-          Math.abs(ab - distanciaArista) < 0.01 &&
-          Math.abs(ac - distanciaArista) < 0.01 &&
-          Math.abs(bc - distanciaArista) < 0.01
+          Math.abs(distancia(a, b) - EDGE_SQ) < 5 &&
+          Math.abs(distancia(b, c) - EDGE_SQ) < 5 &&
+          Math.abs(distancia(c, a) - EDGE_SQ) < 5
         ) {
-          const centro = {
-            x: (a.x + b.x + c.x) / 3,
-            y: (a.y + b.y + c.y) / 3,
-            z: (a.z + b.z + c.z) / 3
-          };
-
+          const centroZ = (a[2] + b[2] + c[2]) / 3;
           caras.push({
             vertices: [a, b, c],
-            centro,
-            grupo: null
+            profundidad: centroZ,
+            centro: [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3],
           });
         }
       }
     }
   }
 
-  // Dibujar primero las caras más alejadas
-  caras.sort((a, b) => a.centro.z - b.centro.z);
-
+  caras.sort((a, b) => a.profundidad - b.profundidad);
   return caras;
 }
 
-// ===== DIBUJAR EL ICOSAEDRO =====
+function dibujarPinata() {
+  dibujo.replaceChildren();
+  conos = [];
 
-function dibujarIcosaedro() {
   const vertices = crearVerticesIcosaedro();
   const caras = crearCaras(vertices);
 
-  dibujo.innerHTML = '';
-
-  const colores = [
-    'relleno-1',
-    'relleno-2',
-    'relleno-3'
-  ];
-
-  caras.forEach((cara, index) => {
-    const grupo = document.createElementNS(
-      'http://www.w3.org/2000/svg',
-      'g'
-    );
-
-    grupo.setAttribute('class', 'cara-icosaedro');
-
-    const poligono = document.createElementNS(
-      'http://www.w3.org/2000/svg',
-      'polygon'
-    );
+  caras.forEach((cara, i) => {
+    const grupo = crear('g', {}, dibujo);
 
     const puntos = cara.vertices
-      .map(v => `${v.x},${v.y}`)
+      .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
       .join(' ');
 
-    poligono.setAttribute('points', puntos);
-    poligono.setAttribute(
-      'class',
-      colores[index % colores.length]
+    const color = (i % 3) + 1;
+    const profundidad = Math.max(
+      0.4,
+      Math.min(1, 0.55 + (cara.profundidad / (PHI * ESCALA)) * 0.45)
     );
 
-    grupo.appendChild(poligono);
+    crear('polygon', {
+      points: puntos,
+      class: `relleno-${color} contorno`,
+      opacity: profundidad,
+    }, grupo);
 
     const centro = cara.centro;
-
-    const detalle = document.createElementNS(
-      'http://www.w3.org/2000/svg',
-      'circle'
-    );
-
-    detalle.setAttribute('cx', centro.x);
-    detalle.setAttribute('cy', centro.y);
-    detalle.setAttribute('r', '3');
-    detalle.setAttribute('fill', '#C7B182');
-    detalle.setAttribute('opacity', '0.65');
-
-    grupo.appendChild(detalle);
-
-    dibujo.appendChild(grupo);
-
-    cara.grupo = grupo;
-  });
-
-  carasIcosaedro = caras;
-
-  if (caras.length !== 20) {
-    console.error(
-      `Error: se esperaban 20 caras y se generaron ${caras.length}.`
-    );
-  }
-}
-
-// ===== MOVIMIENTO DEL PÉNDULO =====
-
-function moverPinata() {
-  if (juegoTerminado || !colgante) return;
-
-  angulo += 0.025 * direccion;
-
-  if (angulo > 0.25 || angulo < -0.25) {
-    direccion *= -1;
-  }
-
-  colgante.style.transform = `rotate(${angulo}rad)`;
-
-  animacionPinata = requestAnimationFrame(moverPinata);
-}
-
-// ===== GOLPEAR LA PIÑATA =====
-
-function golpear() {
-  if (juegoTerminado || golpeando || resistencia <= 0) {
-    return;
-  }
-
-  golpeando = true;
-  golpes++;
-
-  resistencia--;
-
-  if (marcador) {
-    marcador.textContent = resistencia;
-  }
-
-  if (verso) {
-    verso.textContent =
-      versos[Math.floor(Math.random() * versos.length)];
-  }
-
-  if (palo) {
-    palo.classList.add('golpe');
-  }
-
-  if (pinata) {
-    pinata.classList.add('impacto');
-  }
-
-  if (resistencia <= 0) {
-    setTimeout(() => {
-      romper();
-    }, 250);
-  } else {
-    crearGrieta();
-  }
-
-  setTimeout(() => {
-    golpeando = false;
-
-    if (palo) {
-      palo.classList.remove('golpe');
-    }
-
-    if (pinata) {
-      pinata.classList.remove('impacto');
-    }
-  }, 300);
-}
-
-// ===== CREAR GRIETAS =====
-
-function crearGrieta() {
-  const grieta = document.createElementNS(
-    'http://www.w3.org/2000/svg',
-    'path'
-  );
-
-  const x = (Math.random() - 0.5) * RADIO;
-  const y = (Math.random() - 0.5) * RADIO;
-
-  const x2 = x + (Math.random() - 0.5) * 55;
-  const y2 = y + (Math.random() - 0.5) * 55;
-
-  const x3 = x2 + (Math.random() - 0.5) * 40;
-  const y3 = y2 + (Math.random() - 0.5) * 40;
-
-  grieta.setAttribute(
-    'd',
-    `M ${x} ${y} L ${x2} ${y2} L ${x3} ${y3}`
-  );
-
-  grieta.setAttribute('class', 'grieta');
-
-  dibujo.appendChild(grieta);
-}
-
-// ===== ROMPER LA PIÑATA =====
-
-function romper() {
-  if (juegoTerminado) return;
-
-  juegoTerminado = true;
-
-  cancelAnimationFrame(animacionPinata);
-
-  if (verso) {
-    verso.textContent = '¡LA PIÑATA SE ROMPIÓ!';
-  }
-
-  if (pinata) {
-    pinata.style.opacity = '0';
-  }
-
-  crearFragmentos();
-  lanzarConfeti();
-  lanzarDulces();
-
-  setTimeout(() => {
-    if (final) {
-      final.classList.add('visible');
-    }
-
-    if (resumen) {
-      resumen.textContent =
-        `¡La rompiste en ${golpes} golpes! Recoge los dulces.`;
-    }
-  }, 800);
-}
-
-// ===== FRAGMENTOS DEL ICOSAEDRO =====
-
-function crearFragmentos() {
-  const tam = dibujo.offsetWidth || 400;
-
-  carasIcosaedro.forEach((cara, index) => {
-    if (!cara.grupo) return;
-
-    const fragmento = document.createElementNS(
-      'http://www.w3.org/2000/svg',
-      'svg'
-    );
-
-    fragmento.setAttribute(
-      'viewBox',
-      '-200 -200 400 400'
-    );
-
-    fragmento.setAttribute('width', tam);
-    fragmento.setAttribute('height', tam);
-    fragmento.setAttribute('class', 'fragmento');
-
-    const copia = cara.grupo.cloneNode(true);
-
-    fragmento.appendChild(copia);
-
-    if (capa) {
-      capa.appendChild(fragmento);
-    }
-
-    const centroX = cara.centro.x + 200;
-    const centroY = cara.centro.y + 200;
-
-    fragmento.style.position = 'absolute';
-    fragmento.style.left = '50%';
-    fragmento.style.top = '50%';
-    fragmento.style.width = `${tam}px`;
-    fragmento.style.height = `${tam}px`;
-    fragmento.style.overflow = 'visible';
-    fragmento.style.pointerEvents = 'none';
-
-    fragmento.style.transformOrigin =
-      `${centroX / 400 * 100}% ${centroY / 400 * 100}%`;
-
-    const anguloFragmento =
-      (Math.random() - 0.5) * 100;
-
-    const distanciaFragmento =
-      120 + Math.random() * 180;
-
-    const destinoX =
-      Math.cos(index * 2.4) * distanciaFragmento;
-
-    const destinoY =
-      Math.sin(index * 2.4) * distanciaFragmento;
-
-    fragmento.animate(
-      [
-        {
-          transform: 'translate(0, 0) rotate(0deg)',
-          opacity: 1
-        },
-        {
-          transform:
-            `translate(${destinoX}px, ${destinoY}px) rotate(${anguloFragmento}deg)`,
-          opacity: 0
-        }
-      ],
-      {
-        duration: 900 + Math.random() * 500,
-        easing: 'cubic-bezier(.2,.7,.3,1)',
-        fill: 'forwards'
-      }
-    );
-  });
-}
-
-// ===== CONFETI =====
-
-function lanzarConfeti() {
-  if (!capa) return;
-
-  const colores = [
-    '#C7B182',
-    '#634F5F',
-    '#E4007C',
-    '#FFC21A',
-    '#00A6A6',
-    '#FFFFFF'
-  ];
-
-  for (let i = 0; i < 70; i++) {
-    const pieza = document.createElement('div');
-
-    pieza.className = 'confeti';
-
-    pieza.style.position = 'absolute';
-    pieza.style.left = `${Math.random() * 100}%`;
-    pieza.style.top = `${Math.random() * 30}%`;
-    pieza.style.width = `${5 + Math.random() * 7}px`;
-    pieza.style.height = `${5 + Math.random() * 10}px`;
-    pieza.style.background =
-      colores[Math.floor(Math.random() * colores.length)];
-
-    capa.appendChild(pieza);
-
-    const destinoX =
-      (Math.random() - 0.5) * 500;
-
-    const destinoY =
-      250 + Math.random() * 300;
-
-    pieza.animate(
-      [
-        {
-          transform: 'translate(0, 0) rotate(0deg)',
-          opacity: 1
-        },
-        {
-          transform:
-            `translate(${destinoX}px, ${destinoY}px) rotate(${Math.random() * 720}deg)`,
-          opacity: 0
-        }
-      ],
-      {
-        duration: 1800 + Math.random() * 1500,
-        easing: 'ease-out',
-        fill: 'forwards'
-      }
-    );
-  }
-}
-
-// ===== LANZAR DULCES =====
-
-function lanzarDulces() {
-  if (!capa) return;
-
-  const cantidad = 28;
-
-  for (let i = 0; i < cantidad; i++) {
-    const dulce = document.createElement('button');
-
-    dulce.type = 'button';
-    dulce.className = 'dulce';
-
-    dulce.textContent =
-      dulces[Math.floor(Math.random() * dulces.length)];
-
-    dulce.setAttribute('aria-label', 'Recoger dulce');
-
-    dulce.style.position = 'absolute';
-    dulce.style.left = '50%';
-    dulce.style.top = '50%';
-    dulce.style.border = '0';
-    dulce.style.background = 'transparent';
-    dulce.style.fontSize = `${22 + Math.random() * 12}px`;
-    dulce.style.cursor = 'pointer';
-    dulce.style.zIndex = '10';
-
-    const destinoX =
-      (Math.random() - 0.5) * 350;
-
-    const destinoY =
-      (Math.random() - 0.5) * 280;
-
-    dulce.animate(
-      [
-        {
-          transform: 'translate(-50%, -50%) scale(.3)',
-          opacity: 0
-        },
-        {
-          transform:
-            `translate(calc(-50% + ${destinoX}px), calc(-50% + ${destinoY}px)) scale(1)`,
-          opacity: 1
-        }
-      ],
-      {
-        duration: 700 + Math.random() * 500,
-        easing: 'cubic-bezier(.2,.7,.3,1)',
-        fill: 'forwards'
-      }
-    );
-
-    dulce.addEventListener('click', () => {
-      if (dulce.classList.contains('recogido')) return;
-
-      dulce.classList.add('recogido');
-      dulce.style.pointerEvents = 'none';
-
-      dulce.animate(
-        [
-          { transform: 'scale(1)', opacity: 1 },
-          { transform: 'scale(0)', opacity: 0 }
-        ],
-        {
-          duration: 250,
-          fill: 'forwards'
-        }
-      );
-
-      dulcesRecogidos++;
-
-      if (contadorBolsa) {
-        contadorBolsa.textContent = dulcesRecogidos;
-      }
-
-      setTimeout(() => {
-        dulce.remove();
-      }, 260);
+    const puntosInterior = cara.vertices.map(([x, y]) => [
+      x * 0.72 + centro[0] * 0.28,
+      y * 0.72 + centro[1] * 0.28,
+    ]);
+
+    crear('polygon', {
+      points: puntosInterior.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+      fill: 'none',
+      stroke: '#C7B182',
+      'stroke-width': '1.5',
+      opacity: '0.65',
+    }, grupo);
+
+    conos.push({
+      grupo,
+      angulo: Math.atan2(centro[1], centro[0]),
+      centro,
     });
-
-    capa.appendChild(dulce);
-  }
-}
-
-// ===== CONTROL DEL PALO =====
-
-function iniciarMovimiento(event) {
-  if (juegoTerminado || moviendo) return;
-
-  moviendo = true;
-
-  const punto = obtenerPunto(event);
-
-  posicionPalo = punto;
-
-  if (palo) {
-    palo.style.left = `${punto.x}px`;
-    palo.style.top = `${punto.y}px`;
-  }
-}
-
-function moverPalo(event) {
-  if (!moviendo || juegoTerminado) return;
-
-  const punto = obtenerPunto(event);
-
-  posicionPalo = punto;
-
-  if (palo) {
-    palo.style.left = `${punto.x}px`;
-    palo.style.top = `${punto.y}px`;
-  }
-}
-
-function terminarMovimiento() {
-  if (!moviendo) return;
-
-  moviendo = false;
-
-  golpear();
-}
-
-function obtenerPunto(event) {
-  const rect = patio.getBoundingClientRect();
-
-  const touch =
-    event.touches && event.touches.length
-      ? event.touches[0]
-      : event.changedTouches && event.changedTouches.length
-        ? event.changedTouches[0]
-        : event;
-
-  return {
-    x: touch.clientX - rect.left,
-    y: touch.clientY - rect.top
-  };
-}
-
-// ===== EVENTOS DEL JUEGO =====
-
-if (patio) {
-  patio.addEventListener('pointerdown', event => {
-    if (
-      event.target.closest('button') ||
-      event.target.closest('#otra')
-    ) {
-      return;
-    }
-
-    iniciarMovimiento(event);
   });
 
-  patio.addEventListener('pointermove', moverPalo);
-  patio.addEventListener('pointerup', terminarMovimiento);
-  patio.addEventListener('pointercancel', terminarMovimiento);
-}
+  const capaGrietas = crear('g', {}, dibujo);
+  grietas = [];
+  const total = 8;
 
-// Golpe con teclado
-document.addEventListener('keydown', event => {
-  if (
-    event.code === 'Space' ||
-    event.code === 'Enter'
-  ) {
-    if (
-      event.target.tagName === 'BUTTON' ||
-      event.target.tagName === 'INPUT'
-    ) {
-      return;
+  for (let i = 0; i < total; i++) {
+    const angulo = (i / total) * 2 * Math.PI + azar(-0.3, 0.3);
+    let r = azar(4, 18);
+    let d = `M${xy([r * Math.cos(angulo), r * Math.sin(angulo)])}`;
+
+    while (r < RADIO + 25) {
+      r += azar(14, 24);
+      const punto = [
+        r * Math.cos(angulo + azar(-0.35, 0.35)),
+        r * Math.sin(angulo + azar(-0.35, 0.35)),
+      ];
+      d += ` L${xy(punto)}`;
     }
 
-    event.preventDefault();
-    golpear();
+    grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
   }
+
+  grietas.sort(() => Math.random() - 0.5);
+}
+
+// ----- Golpes -----
+
+function cantar() {
+  verso.textContent = letra[linea % letra.length];
+  linea++;
+  reiniciarAnimacion(verso, 'nuevo');
+}
+
+function reiniciarAnimacion(elemento, clase) {
+  elemento.classList.remove(clase);
+  void elemento.offsetWidth;
+  elemento.classList.add(clase);
+}
+
+function batear(x, y) {
+  const lado = x < innerWidth / 2 ? 'izquierda' : 'derecha';
+  palo.className = `palo ${lado}`;
+  palo.style.left = `${x}px`;
+  palo.style.top = `${y}px`;
+  reiniciarAnimacion(palo, 'activo');
+}
+
+function mostrarTexto(x, y, texto, clase = '') {
+  const pum = document.createElement('p');
+  pum.className = `pum ${clase}`;
+  pum.textContent = texto;
+  pum.style.left = `${x}px`;
+  pum.style.top = `${y}px`;
+  pum.addEventListener('animationend', () => pum.remove());
+  document.body.append(pum);
+}
+
+function pegar(x, y) {
+  if (rota) return;
+  golpes++;
+  intentos++;
+  cantar();
+  batear(x, y);
+  mostrarTexto(x, y, golpesFuertes[Math.floor(Math.random() * golpesFuertes.length)]);
+  reiniciarAnimacion(dibujo, 'golpe');
+
+  const caja = pinata.getBoundingClientRect();
+  const direccion = x < caja.left + caja.width / 2 ? -1 : 1;
+  pendulo.velocidad += direccion * azar(70, 120);
+
+  const visibles = Math.floor((golpes / golpesNecesarios) * (grietas.length + 1));
+  grietas.forEach((grieta, i) => grieta.classList.toggle('visible', i < visibles));
+
+  marcador.textContent = `Golpes: ${golpes}`;
+  if (golpes >= golpesNecesarios) romper();
+}
+
+function fallar(x, y) {
+  if (rota) return;
+  intentos++;
+  cantar();
+  batear(x, y);
+  mostrarTexto(x, y, '¡Aire!', 'aire');
+}
+
+pinata.addEventListener('pointerdown', (evento) => {
+  evento.stopPropagation();
+  pegar(evento.clientX, evento.clientY);
 });
 
-// ===== REINICIAR JUEGO =====
+pinata.addEventListener('click', (evento) => {
+  if (evento.detail !== 0) return;
+  const caja = pinata.getBoundingClientRect();
+  pegar(caja.left + caja.width * azar(0.3, 0.7), caja.top + caja.height * 0.5);
+});
 
-function reiniciarJuego() {
-  resistencia = resistenciaInicial;
+patio.addEventListener('pointerdown', (evento) => {
+  if (evento.target.closest('.final')) return;
+  fallar(evento.clientX, evento.clientY);
+});
+
+// ----- ¡Se rompió el icosaedro! -----
+
+function agregarPieza(pieza) {
+  capa.append(pieza.el);
+  piezas.push({ giro: 0, vgiro: 0, gravedad: 1400, ...pieza });
+}
+
+function romper() {
+  rota = true;
+
+  const origen = capa.getBoundingClientRect();
+  const caja = dibujo.getBoundingClientRect();
+  const tam = dibujo.offsetWidth;
+
+  const centroX = caja.left + caja.width / 2 - origen.left;
+  const centroY = caja.top + caja.height / 2 - origen.top;
+  const escala = tam / 400;
+
+  if (!sinMovimiento) {
+    for (const cara of conos) {
+      const svg = document.createElementNS(SVG, 'svg');
+      svg.setAttribute('viewBox', '-200 -200 400 400');
+      svg.setAttribute('class', 'fragmento');
+      svg.style.width = svg.style.height = `${tam}px`;
+      svg.style.transformOrigin = `${(cara.centro[0] + 200) * escala}px ${(cara.centro[1] + 200) * escala}px`;
+      svg.append(cara.grupo.cloneNode(true));
+
+      const fuerza = azar(220, 420);
+      agregarPieza({
+        el: svg,
+        tipo: 'fragmento',
+        x: centroX - tam / 2,
+        y: centroY - tam / 2,
+        vx: Math.cos(cara.angulo) * fuerza,
+        vy: Math.sin(cara.angulo) * fuerza - 250,
+        vgiro: azar(-300, 300),
+        vida: 1.6,
+      });
+    }
+
+    for (let i = 0; i < 45; i++) {
+      const confeti = document.createElement('span');
+      confeti.className = 'confeti';
+      confeti.style.background = `var(${['--color-1', '--color-2', '--color-3', '--cuerpo'][i % 4]})`;
+      agregarPieza({
+        el: confeti,
+        tipo: 'confeti',
+        x: centroX + azar(-30, 30),
+        y: centroY + azar(-30, 30),
+        vx: azar(-380, 380),
+        vy: azar(-650, -150),
+        vgiro: azar(-720, 720),
+        gravedad: 700,
+        fase: azar(0, 6),
+        vida: azar(2.5, 4),
+      });
+    }
+  }
+
+  for (let i = 0; i < 28; i++) {
+    const dulce = document.createElement('span');
+    dulce.className = 'dulce';
+    dulce.textContent = contenido[i % contenido.length];
+
+    const pieza = {
+      el: dulce,
+      tipo: 'dulce',
+      x: centroX + azar(-20, 20),
+      y: centroY + azar(-20, 20),
+      vx: azar(-280, 280),
+      vy: azar(-560, -120),
+      vgiro: azar(-400, 400),
+      suelo: capa.clientHeight - azar(18, 46),
+    };
+
+    dulce.addEventListener('pointerdown', () => juntar(pieza));
+    agregarPieza(pieza);
+  }
+
+  pinata.hidden = true;
+  marcador.hidden = true;
+  verso.textContent = '';
+  bolsa.hidden = false;
+
+  setTimeout(() => {
+    resumen.textContent =
+      `Le pegaste ${golpes} ${golpes === 1 ? 'vez' : 'veces'} ` +
+      `en ${intentos} ${intentos === 1 ? 'intento' : 'intentos'}. ` +
+      'Toca los dulces para juntarlos.';
+    final.hidden = false;
+    botonOtra.focus({ preventScroll: true });
+  }, 700);
+}
+
+function juntar(pieza) {
+  if (pieza.juntado) return;
+  pieza.juntado = true;
+
+  const origen = capa.getBoundingClientRect();
+  const destino = bolsa.getBoundingClientRect();
+  const x = destino.left + destino.width / 2 - origen.left;
+  const y = destino.top + destino.height / 2 - origen.top;
+
+  pieza.el.style.transition = 'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
+  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
+  pieza.el.style.opacity = '0';
+
+  setTimeout(() => {
+    pieza.el.remove();
+    piezas = piezas.filter((otra) => otra !== pieza);
+    juntados++;
+    contadorBolsa.textContent = juntados;
+    reiniciarAnimacion(bolsa, 'lleno');
+  }, 450);
+}
+
+// ----- Reiniciar juego -----
+
+// Movemos la declaración de pendulo más arriba para mayor claridad (opcional pero recomendable)
+const pendulo = { angulo: 0, velocidad: 0 };
+
+botonOtra.addEventListener('click', () => {
+  piezas.forEach((pieza) => pieza.el.remove());
+  piezas = [];
+
   golpes = 0;
-  dulcesRecogidos = 0;
-  juegoTerminado = false;
-  golpeando = false;
-  moviendo = false;
-  angulo = 0;
-  direccion = 1;
+  intentos = 0;
+  linea = 0;
+  rota = false;
+  juntados = 0;                    // FIX
+  contadorBolsa.textContent = '0'; // FIX
+  bolsa.hidden = true;             // FIX
 
-  cancelAnimationFrame(animacionPinata);
-  cancelAnimationFrame(animacionPalo);
+  pendulo.angulo = 0;
+  pendulo.velocidad = 0;
 
-  if (marcador) {
-    marcador.textContent = resistencia;
+  dibujarPinata();
+
+  pinata.hidden = false;
+  marcador.hidden = false;
+  marcador.textContent = 'Golpes: 0';
+  verso.textContent = 'Toca el icosaedro para pegarle';
+  final.hidden = true;
+
+  pinata.focus({ preventScroll: true });
+});
+
+// ----- Movimiento del icosaedro -----
+
+let tiempo = 0;
+let anterior = performance.now();
+let largoCuerda = cuerda.offsetHeight;
+let jalon = 0;
+let siguienteJalon = azar(2, 4);
+
+addEventListener('resize', () => {
+  largoCuerda = cuerda.offsetHeight;
+});
+
+function moverPiezas(dt) {
+  for (const p of piezas) {
+    if (p.juntado || p.quieto) continue;
+
+    p.vy += p.gravedad * dt;
+
+    if (p.tipo === 'confeti') {
+      p.vx *= 1 - 1.8 * dt;
+      p.vy = Math.min(p.vy, 130);
+      p.x += Math.sin(tiempo * 6 + p.fase) * 40 * dt;
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.giro += p.vgiro * dt;
+
+    if (p.tipo === 'dulce') {
+      if (p.y > p.suelo) {
+        p.y = p.suelo;
+        p.vy = Math.abs(p.vy) < 90 ? 0 : p.vy * -0.35;
+        p.vx *= 0.6;
+        p.vgiro *= 0.5;
+        if (p.vy === 0 && Math.abs(p.vx) < 2) p.quieto = true;
+      }
+
+      const pared = capa.clientWidth - 20;
+      if (p.x < 20 || p.x > pared) {
+        p.x = Math.min(pared, Math.max(20, p.x));
+        p.vx *= -0.5;
+      }
+
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
+    } else {
+      p.vida -= dt;
+      p.el.style.opacity = Math.min(1, Math.max(0, p.vida));
+      const centrar = p.tipo === 'confeti' ? ' translate(-50%, -50%)' : '';
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
+    }
   }
 
-  if (contadorBolsa) {
-    contadorBolsa.textContent = '0';
-  }
-
-  if (final) {
-    final.classList.remove('visible');
-  }
-
-  if (capa) {
-    capa.innerHTML = '';
-  }
-
-  if (pinata) {
-    pinata.style.opacity = '1';
-    pinata.style.transform = '';
-    pinata.classList.remove('impacto');
-  }
-
-  if (colgante) {
-    colgante.style.transform = 'rotate(0rad)';
-  }
-
-  if (palo) {
-    palo.classList.remove('golpe');
-  }
-
-  if (verso) {
-    verso.textContent = '¡Dale con ganas!';
-  }
-
-  dibujarIcosaedro();
-  moverPinata();
+  piezas = piezas.filter((p) => {
+    if (p.vida !== undefined && p.vida <= 0) {
+      p.el.remove();
+      return false;
+    }
+    return true;
+  });
 }
 
-if (otra) {
-  otra.addEventListener('click', reiniciarJuego);
+function animar(ahora) {
+  const dt = Math.min(0.05, (ahora - anterior) / 1000);
+  anterior = ahora;
+  tiempo += dt * movimiento.rapidez;
+
+  const objetivo = movimiento.mecer * (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
+
+  pendulo.velocidad += (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
+  pendulo.angulo += pendulo.velocidad * dt;
+
+  if (movimiento.subir > 0) {
+    siguienteJalon -= dt;
+    if (siguienteJalon <= 0) {
+      jalon = 1;
+      siguienteJalon = azar(1.5, 4) / movimiento.rapidez;
+      pendulo.velocidad += azar(-3, 3) * movimiento.mecer;
+    }
+    jalon = Math.max(0, jalon - dt * 1.8);
+  }
+
+  const subida = 1 - Math.sin(jalon * Math.PI);
+  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (0.6 + 0.4 * Math.sin(tiempo * 0.5)) * subida;
+
+  colgante.style.transform = `rotate(${pendulo.angulo}deg)`;
+  cuerda.style.transform = `scaleY(${(largoCuerda + bajada) / largoCuerda})`;
+  pinata.style.transform = `translateY(${bajada}px)`;
+
+  moverPiezas(dt);
+  requestAnimationFrame(animar);
 }
 
-// ===== INICIAR =====
-
-function iniciarJuego() {
-  if (!dibujo || !patio || !pinata) {
-    console.error(
-      'HNR Labs: faltan elementos necesarios en index.html.'
-    );
-    return;
-  }
-
-  dibujarIcosaedro();
-
-  if (marcador) {
-    marcador.textContent = resistencia;
-  }
-
-  if (contadorBolsa) {
-    contadorBolsa.textContent = '0';
-  }
-
-  moverPinata();
-}
-
-iniciarJuego();
+// ----- Iniciar -----
+dibujarPinata();
+requestAnimationFrame(animar);
