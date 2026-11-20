@@ -1,6 +1,5 @@
-// ===== HNR LABS — JAILBREAK THE PIÑATA =====
+// ===== HNR LABS — THE MOSH PIT PIÑATA (ICOSAEDRO) =====
 
-// Premios dentro del icosaedro
 const dulces = [
   '🎟️', '🎫', '🎸', '🤘',
   '🥭', '🍊', '🍍', '🍉',
@@ -8,11 +7,10 @@ const dulces = [
   '🍯', '🥥'
 ];
 
-const picos = 7; // Se conserva por compatibilidad; el icosaedro usa 20 caras.
 const resistencia = 20;
 const travesura = 3;
 
-// ===== A partir de aquí no necesitas cambiar nada =====
+// ===== Configuración =====
 
 const letra = [
   'Dale, dale, dale,',
@@ -42,6 +40,7 @@ const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const movimiento = sinMovimiento ? niveles[0] : niveles[limitar(travesura, 0, 3)];
 const contenido = dulces.length > 0 ? dulces : ['🍬'];
 
+// DOM
 const patio = document.querySelector('#patio');
 const colgante = document.querySelector('#colgante');
 const cuerda = document.querySelector('#cuerda');
@@ -56,8 +55,13 @@ const capa = document.querySelector('#capa');
 const palo = document.querySelector('#palo');
 const bolsa = document.querySelector('#bolsa');
 const contadorBolsa = document.querySelector('#contador-bolsa');
+const hitAction = document.querySelector('#hit-action');
+const integrityValue = document.querySelector('#integrity-value');
+const integrityFill = document.querySelector('#integrity-fill');
+const integrityTrack = document.querySelector('#integrity-track');
+const terminalMessage = document.querySelector('#terminal-message');
 
-document.title = document.querySelector('.titulo')?.textContent.trim() || 'Jailbreak the Piñata';
+document.title = document.querySelector('.titulo')?.textContent.trim() || 'THE MOSH PIT PIÑATA';
 patio?.style.setProperty('--subir', `${movimiento.subir}px`);
 
 let golpes = 0;
@@ -69,41 +73,38 @@ let conos = [];
 let grietas = [];
 let piezas = [];
 
-// ----- Icosaedro HNR Labs (SVG) -----
-
+// ===== Icosaedro =====
 const SVG = 'http://www.w3.org/2000/svg';
 const RADIO = 120;
 const PHI = (1 + Math.sqrt(5)) / 2;
 const ESCALA = 72;
-const EDGE_SQ = 4 * ESCALA * ESCALA; // FIX: distancia al cuadrado correcta después del escalado
+const EDGE_SQ = 4 * ESCALA * ESCALA;
 
 const azar = (min, max) => min + Math.random() * (max - min);
 const xy = (p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
 
 function crear(etiqueta, atributos, padre) {
-  const elemento = document.createElementNS(SVG, etiqueta);
-  for (const [nombre, valor] of Object.entries(atributos)) {
-    elemento.setAttribute(nombre, valor);
-  }
-  padre.append(elemento);
-  return elemento;
+  const el = document.createElementNS(SVG, etiqueta);
+  for (const [k, v] of Object.entries(atributos)) el.setAttribute(k, v);
+  padre.append(el);
+  return el;
 }
 
 function crearVerticesIcosaedro() {
-  const vertices = [
+  const verts = [
     [0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
     [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
     [PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, 1], [-PHI, 0, -1],
   ];
 
-  const rotacionX = 0.28;
-  const rotacionY = 0.42;
+  const rx = 0.28;
+  const ry = 0.42;
 
-  return vertices.map(([x, y, z]) => {
-    const y1 = y * Math.cos(rotacionX) - z * Math.sin(rotacionX);
-    const z1 = y * Math.sin(rotacionX) + z * Math.cos(rotacionX);
-    const x2 = x * Math.cos(rotacionY) + z1 * Math.sin(rotacionY);
-    const z2 = -x * Math.sin(rotacionY) + z1 * Math.cos(rotacionY);
+  return verts.map(([x, y, z]) => {
+    const y1 = y * Math.cos(rx) - z * Math.sin(rx);
+    const z1 = y * Math.sin(rx) + z * Math.cos(rx);
+    const x2 = x * Math.cos(ry) + z1 * Math.sin(ry);
+    const z2 = -x * Math.sin(ry) + z1 * Math.cos(ry);
     return [x2 * ESCALA, y1 * ESCALA, z2 * ESCALA];
   });
 }
@@ -118,19 +119,17 @@ function crearCaras(vertices) {
         const b = vertices[j];
         const c = vertices[k];
 
-        const distancia = (p, q) =>
+        const dist = (p, q) =>
           (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
 
-        // FIX: usamos EDGE_SQ en lugar de 4
         if (
-          Math.abs(distancia(a, b) - EDGE_SQ) < 5 &&
-          Math.abs(distancia(b, c) - EDGE_SQ) < 5 &&
-          Math.abs(distancia(c, a) - EDGE_SQ) < 5
+          Math.abs(dist(a, b) - EDGE_SQ) < 5 &&
+          Math.abs(dist(b, c) - EDGE_SQ) < 5 &&
+          Math.abs(dist(c, a) - EDGE_SQ) < 5
         ) {
-          const centroZ = (a[2] + b[2] + c[2]) / 3;
           caras.push({
             vertices: [a, b, c],
-            profundidad: centroZ,
+            profundidad: (a[2] + b[2] + c[2]) / 3,
             centro: [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3],
           });
         }
@@ -157,7 +156,7 @@ function dibujarPinata() {
       .join(' ');
 
     const color = (i % 3) + 1;
-    const profundidad = Math.max(
+    const opacidad = Math.max(
       0.4,
       Math.min(1, 0.55 + (cara.profundidad / (PHI * ESCALA)) * 0.45)
     );
@@ -165,17 +164,19 @@ function dibujarPinata() {
     crear('polygon', {
       points: puntos,
       class: `relleno-${color} contorno`,
-      opacity: profundidad,
+      opacity: opacidad,
     }, grupo);
 
     const centro = cara.centro;
-    const puntosInterior = cara.vertices.map(([x, y]) => [
+    const interior = cara.vertices.map(([x, y]) => [
       x * 0.72 + centro[0] * 0.28,
       y * 0.72 + centro[1] * 0.28,
     ]);
 
     crear('polygon', {
-      points: puntosInterior.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+      points: interior
+        .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+        .join(' '),
       fill: 'none',
       stroke: '#C7B182',
       'stroke-width': '1.5',
@@ -189,22 +190,22 @@ function dibujarPinata() {
     });
   });
 
+  // Grietas
   const capaGrietas = crear('g', {}, dibujo);
   grietas = [];
-  const total = 8;
 
-  for (let i = 0; i < total; i++) {
-    const angulo = (i / total) * 2 * Math.PI + azar(-0.3, 0.3);
+  for (let i = 0; i < 8; i++) {
+    const angulo = (i / 8) * 2 * Math.PI + azar(-0.3, 0.3);
     let r = azar(4, 18);
     let d = `M${xy([r * Math.cos(angulo), r * Math.sin(angulo)])}`;
 
     while (r < RADIO + 25) {
       r += azar(14, 24);
-      const punto = [
+      const p = [
         r * Math.cos(angulo + azar(-0.35, 0.35)),
         r * Math.sin(angulo + azar(-0.35, 0.35)),
       ];
-      d += ` L${xy(punto)}`;
+      d += ` L${xy(p)}`;
     }
 
     grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
@@ -213,18 +214,34 @@ function dibujarPinata() {
   grietas.sort(() => Math.random() - 0.5);
 }
 
-// ----- Golpes -----
+// ===== Utilidades =====
+function actualizarMarcador() {
+  marcador.innerHTML = `${golpes} <span>/ ${golpesNecesarios}</span>`;
+}
+
+function actualizarIntegridad() {
+  const pct = Math.max(0, Math.round(100 - (golpes / golpesNecesarios) * 100));
+  if (integrityValue) integrityValue.textContent = `${pct}%`;
+  if (integrityFill) integrityFill.style.transform = `scaleX(${pct / 100})`;
+  if (integrityTrack) integrityTrack.setAttribute('aria-valuenow', pct);
+}
+
+function actualizarTerminal(texto) {
+  if (terminalMessage) terminalMessage.textContent = texto;
+}
 
 function cantar() {
-  verso.textContent = letra[linea % letra.length];
+  const texto = letra[linea % letra.length];
+  verso.textContent = texto;
+  actualizarTerminal(`[HNR] ${texto}`);
   linea++;
   reiniciarAnimacion(verso, 'nuevo');
 }
 
-function reiniciarAnimacion(elemento, clase) {
-  elemento.classList.remove(clase);
-  void elemento.offsetWidth;
-  elemento.classList.add(clase);
+function reiniciarAnimacion(el, clase) {
+  el.classList.remove(clase);
+  void el.offsetWidth;
+  el.classList.add(clase);
 }
 
 function batear(x, y) {
@@ -236,32 +253,39 @@ function batear(x, y) {
 }
 
 function mostrarTexto(x, y, texto, clase = '') {
-  const pum = document.createElement('p');
-  pum.className = `pum ${clase}`;
-  pum.textContent = texto;
-  pum.style.left = `${x}px`;
-  pum.style.top = `${y}px`;
-  pum.addEventListener('animationend', () => pum.remove());
-  document.body.append(pum);
+  const p = document.createElement('p');
+  p.className = `pum ${clase}`;
+  p.textContent = texto;
+  p.style.left = `${x}px`;
+  p.style.top = `${y}px`;
+  p.addEventListener('animationend', () => p.remove());
+  document.body.append(p);
 }
+
+// ===== Golpes =====
+const pendulo = { angulo: 0, velocidad: 0 };
 
 function pegar(x, y) {
   if (rota) return;
+
   golpes++;
   intentos++;
+
   cantar();
   batear(x, y);
   mostrarTexto(x, y, golpesFuertes[Math.floor(Math.random() * golpesFuertes.length)]);
   reiniciarAnimacion(dibujo, 'golpe');
 
   const caja = pinata.getBoundingClientRect();
-  const direccion = x < caja.left + caja.width / 2 ? -1 : 1;
-  pendulo.velocidad += direccion * azar(70, 120);
+  const dir = x < caja.left + caja.width / 2 ? -1 : 1;
+  pendulo.velocidad += dir * azar(70, 120);
 
   const visibles = Math.floor((golpes / golpesNecesarios) * (grietas.length + 1));
-  grietas.forEach((grieta, i) => grieta.classList.toggle('visible', i < visibles));
+  grietas.forEach((g, i) => g.classList.toggle('visible', i < visibles));
 
-  marcador.textContent = `Golpes: ${golpes}`;
+  actualizarMarcador();
+  actualizarIntegridad();
+
   if (golpes >= golpesNecesarios) romper();
 }
 
@@ -273,24 +297,32 @@ function fallar(x, y) {
   mostrarTexto(x, y, '¡Aire!', 'aire');
 }
 
-pinata.addEventListener('pointerdown', (evento) => {
-  evento.stopPropagation();
-  pegar(evento.clientX, evento.clientY);
+// Eventos
+pinata.addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  pegar(e.clientX, e.clientY);
 });
 
-pinata.addEventListener('click', (evento) => {
-  if (evento.detail !== 0) return;
+pinata.addEventListener('click', (e) => {
+  if (e.detail !== 0) return;
   const caja = pinata.getBoundingClientRect();
   pegar(caja.left + caja.width * azar(0.3, 0.7), caja.top + caja.height * 0.5);
 });
 
-patio.addEventListener('pointerdown', (evento) => {
-  if (evento.target.closest('.final')) return;
-  fallar(evento.clientX, evento.clientY);
+patio.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.final')) return;
+  fallar(e.clientX, e.clientY);
 });
 
-// ----- ¡Se rompió el icosaedro! -----
+hitAction?.addEventListener('click', () => {
+  const caja = pinata.getBoundingClientRect();
+  pegar(
+    caja.left + caja.width * azar(0.35, 0.65),
+    caja.top + caja.height * 0.5
+  );
+});
 
+// ===== Romper =====
 function agregarPieza(pieza) {
   capa.append(pieza.el);
   piezas.push({ giro: 0, vgiro: 0, gravedad: 1400, ...pieza });
@@ -302,7 +334,6 @@ function romper() {
   const origen = capa.getBoundingClientRect();
   const caja = dibujo.getBoundingClientRect();
   const tam = dibujo.offsetWidth;
-
   const centroX = caja.left + caja.width / 2 - origen.left;
   const centroY = caja.top + caja.height / 2 - origen.top;
   const escala = tam / 400;
@@ -313,7 +344,8 @@ function romper() {
       svg.setAttribute('viewBox', '-200 -200 400 400');
       svg.setAttribute('class', 'fragmento');
       svg.style.width = svg.style.height = `${tam}px`;
-      svg.style.transformOrigin = `${(cara.centro[0] + 200) * escala}px ${(cara.centro[1] + 200) * escala}px`;
+      svg.style.transformOrigin =
+        `${(cara.centro[0] + 200) * escala}px ${(cara.centro[1] + 200) * escala}px`;
       svg.append(cara.grupo.cloneNode(true));
 
       const fuerza = azar(220, 420);
@@ -372,6 +404,7 @@ function romper() {
   marcador.hidden = true;
   verso.textContent = '';
   bolsa.hidden = false;
+  actualizarTerminal('[HNR] PIÑATA DESTROYED — COLLECT REWARDS');
 
   setTimeout(() => {
     resumen.textContent =
@@ -392,8 +425,10 @@ function juntar(pieza) {
   const x = destino.left + destino.width / 2 - origen.left;
   const y = destino.top + destino.height / 2 - origen.top;
 
-  pieza.el.style.transition = 'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
-  pieza.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
+  pieza.el.style.transition =
+    'transform 0.45s cubic-bezier(0.5, -0.4, 0.7, 1), opacity 0.45s ease';
+  pieza.el.style.transform =
+    `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`;
   pieza.el.style.opacity = '0';
 
   setTimeout(() => {
@@ -405,22 +440,19 @@ function juntar(pieza) {
   }, 450);
 }
 
-// ----- Reiniciar juego -----
-
-// Movemos la declaración de pendulo más arriba para mayor claridad (opcional pero recomendable)
-const pendulo = { angulo: 0, velocidad: 0 };
-
+// ===== Reiniciar =====
 botonOtra.addEventListener('click', () => {
-  piezas.forEach((pieza) => pieza.el.remove());
+  piezas.forEach((p) => p.el.remove());
   piezas = [];
 
   golpes = 0;
   intentos = 0;
   linea = 0;
   rota = false;
-  juntados = 0;                    // FIX
-  contadorBolsa.textContent = '0'; // FIX
-  bolsa.hidden = true;             // FIX
+  juntados = 0;
+
+  contadorBolsa.textContent = '0';
+  bolsa.hidden = true;
 
   pendulo.angulo = 0;
   pendulo.velocidad = 0;
@@ -429,15 +461,17 @@ botonOtra.addEventListener('click', () => {
 
   pinata.hidden = false;
   marcador.hidden = false;
-  marcador.textContent = 'Golpes: 0';
+  actualizarMarcador();
+  actualizarIntegridad();
+
   verso.textContent = 'Toca el icosaedro para pegarle';
+  actualizarTerminal('[HNR] CHAOS PROTOCOL ACTIVATED');
   final.hidden = true;
 
   pinata.focus({ preventScroll: true });
 });
 
-// ----- Movimiento del icosaedro -----
-
+// ===== Animación =====
 let tiempo = 0;
 let anterior = performance.now();
 let largoCuerda = cuerda.offsetHeight;
@@ -479,12 +513,14 @@ function moverPiezas(dt) {
         p.vx *= -0.5;
       }
 
-      p.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
+      p.el.style.transform =
+        `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${p.giro}deg)`;
     } else {
       p.vida -= dt;
       p.el.style.opacity = Math.min(1, Math.max(0, p.vida));
       const centrar = p.tipo === 'confeti' ? ' translate(-50%, -50%)' : '';
-      p.el.style.transform = `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
+      p.el.style.transform =
+        `translate(${p.x}px, ${p.y}px)${centrar} rotate(${p.giro}deg)`;
     }
   }
 
@@ -502,9 +538,12 @@ function animar(ahora) {
   anterior = ahora;
   tiempo += dt * movimiento.rapidez;
 
-  const objetivo = movimiento.mecer * (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
+  const objetivo =
+    movimiento.mecer *
+    (0.65 * Math.sin(tiempo * 1.3) + 0.35 * Math.sin(tiempo * 2.9 + 1));
 
-  pendulo.velocidad += (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
+  pendulo.velocidad +=
+    (-(pendulo.angulo - objetivo) * 28 - pendulo.velocidad * 2.2) * dt;
   pendulo.angulo += pendulo.velocidad * dt;
 
   if (movimiento.subir > 0) {
@@ -518,7 +557,11 @@ function animar(ahora) {
   }
 
   const subida = 1 - Math.sin(jalon * Math.PI);
-  const bajada = movimiento.subir * ((1 - Math.cos(tiempo * 1.6)) / 2) * (0.6 + 0.4 * Math.sin(tiempo * 0.5)) * subida;
+  const bajada =
+    movimiento.subir *
+    ((1 - Math.cos(tiempo * 1.6)) / 2) *
+    (0.6 + 0.4 * Math.sin(tiempo * 0.5)) *
+    subida;
 
   colgante.style.transform = `rotate(${pendulo.angulo}deg)`;
   cuerda.style.transform = `scaleY(${(largoCuerda + bajada) / largoCuerda})`;
@@ -528,6 +571,8 @@ function animar(ahora) {
   requestAnimationFrame(animar);
 }
 
-// ----- Iniciar -----
+// ===== Iniciar =====
 dibujarPinata();
+actualizarMarcador();
+actualizarIntegridad();
 requestAnimationFrame(animar);
