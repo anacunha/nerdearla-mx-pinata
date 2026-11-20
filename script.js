@@ -91,83 +91,74 @@ function crear(etiqueta, atributos, padre) {
 }
 
 function dibujarPinata() {
-  dibujo.replaceChildren();
-  conos = [];
-
-  const paso = (2 * Math.PI) / numeroDePicos;
-  const mitad = Math.min(paso * 0.42, 0.55);
-
-  for (let i = 0; i < numeroDePicos; i++) {
-    const angulo = -Math.PI / 2 + paso / 2 + i * paso;
-    const base1 = polar(RADIO * 0.85, angulo - mitad);
-    const base2 = polar(RADIO * 0.85, angulo + mitad);
-    const punta = polar(RADIO + LARGO, angulo);
-    const color = (i % 3) + 1;
-    const franja = ((i + 1) % 3) + 1;
-
-    const grupo = crear('g', {}, dibujo);
-
-    // Borlas
-    for (let k = -2; k <= 2; k++) {
-      const fin = polar(RADIO + LARGO + 22, angulo + k * 0.06);
-      crear('path', {
-        d: `M${xy(punta)} L${xy(fin)}`,
-        class: `borla trazo-${((i + k + 3) % 3) + 1}`,
-      }, grupo);
-    }
-
-    crear('path', {
-      d: `M${xy(base1)} L${xy(punta)} L${xy(base2)} Z`,
-      class: `relleno-${color} contorno`,
-    }, grupo);
-
-    // Franjas
-    for (const [desde, hasta] of [[0.3, 0.42], [0.6, 0.69]]) {
-      const puntos = [
-        entre(base1, punta, desde),
-        entre(base1, punta, hasta),
-        entre(base2, punta, hasta),
-        entre(base2, punta, desde),
-      ];
-      crear('path', {
-        d: `M${puntos.map(xy).join(' L')} Z`,
-        class: `relleno-${franja}`,
-      }, grupo);
-    }
-
-    conos.push({
-      grupo,
-      angulo,
-      centro: polar(RADIO + LARGO * 0.45, angulo),
-    });
-  }
-
-  // Cuerpo central
+   // ===== Centro estilo Huichol =====
   const cuerpo = crear('g', {}, dibujo);
-  crear('circle', { r: RADIO, class: 'relleno-cuerpo contorno' }, cuerpo);
-  [RADIO - 10, RADIO - 32].forEach((r, i) => {
-    crear('circle', { r, class: `fleco trazo-${(i % 3) + 1}` }, cuerpo);
-  });
 
-  // Grietas
-  const capaGrietas = crear('g', {}, dibujo);
-  grietas = [];
-  const total = 6;
+  // Fondo del centro
+  crear('circle', {
+    r: RADIO,
+    fill: '#0d0d0d',
+    stroke: '#C7B182',
+    'stroke-width': '3',
+  }, cuerpo);
 
-  for (let i = 0; i < total; i++) {
-    const angulo = (i / total) * 2 * Math.PI + azar(-0.3, 0.3);
-    let r = azar(4, 18);
-    let d = `M${xy(polar(r, angulo))}`;
+  // Anillo exterior Huichol
+  crear('circle', {
+    r: RADIO - 6,
+    fill: 'none',
+    stroke: '#634F5F',
+    'stroke-width': '4',
+  }, cuerpo);
 
-    while (r < RADIO + 45) {
-      r += azar(14, 24);
-      d += ` L${xy(polar(r, angulo + azar(-0.35, 0.35)))}`;
-    }
-    grietas.push(crear('path', { d, class: 'grieta' }, capaGrietas));
+  // Patrones Huichol (líneas y puntos)
+  const numRayos = 12;
+  for (let i = 0; i < numRayos; i++) {
+    const ang = (i / numRayos) * Math.PI * 2;
+    const x1 = Math.cos(ang) * (RADIO * 0.35);
+    const y1 = Math.sin(ang) * (RADIO * 0.35);
+    const x2 = Math.cos(ang) * (RADIO * 0.82);
+    const y2 = Math.sin(ang) * (RADIO * 0.82);
+
+    crear('line', {
+      x1, y1, x2, y2,
+      stroke: i % 2 === 0 ? '#C7B182' : '#634F5F',
+      'stroke-width': '2.2',
+      'stroke-linecap': 'round',
+    }, cuerpo);
+
+    // Puntos en los extremos
+    crear('circle', {
+      cx: x2,
+      cy: y2,
+      r: 2.8,
+      fill: '#C7B182',
+    }, cuerpo);
   }
 
-  grietas.sort(() => Math.random() - 0.5);
-}
+  // Centro interno
+  crear('circle', {
+    r: RADIO * 0.28,
+    fill: '#634F5F',
+    stroke: '#C7B182',
+    'stroke-width': '2',
+  }, cuerpo);
+
+  crear('circle', {
+    r: RADIO * 0.12,
+    fill: '#C7B182',
+  }, cuerpo);
+
+  // Flecos del centro (opcional, más sutiles)
+  [RADIO - 14, RADIO - 28].forEach((r, i) => {
+    crear('circle', {
+      r,
+      fill: 'none',
+      stroke: i === 0 ? '#C7B182' : '#634F5F',
+      'stroke-width': '1.5',
+      'stroke-dasharray': '3 4',
+      opacity: '0.7',
+    }, cuerpo);
+  });
 
 // ===== Utilidades =====
 function actualizarMarcador() {
