@@ -7,14 +7,14 @@ const dulces = ['🍬', '🍭', '🍫', '🥜', '🍊', '🍡'];
 
 // TODO 5: ¿Cuántos picos tiene tu piñata?
 // La piñata tradicional tiene 7. Prueba con un número del 3 al 12.
-const picos = 7;
+const picos = 5;
 
 // TODO 6: ¿Cuántos golpes aguanta antes de romperse?
-const resistencia = 8;
+const resistencia = 3;
 
 // TODO 7: ¿Qué tan traviesa es la persona que jala la cuerda? Elige del 0 al 3.
 // 0 = no se mueve, 1 = se mece, 2 = la suben, la bajan y le dan jalones, 3 = no tiene piedad
-const travesura = 1;
+const travesura = 2;
 
 
 // ===== A partir de aquí no necesitas cambiar nada, pero puedes explorar =====
@@ -28,6 +28,8 @@ const letra = [
   'ya le diste dos,',
   'ya le diste tres',
   '¡y tu tiempo se acabó!',
+  'se acabó!!',
+  'ese niño es muy tonto, es muy tonto se parece a su papa'
 ];
 const golpesFuertes = ['¡Pum!', '¡Paf!', '¡Zas!', '¡Toing!', '¡Cuas!'];
 
